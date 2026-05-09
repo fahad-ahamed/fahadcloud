@@ -3,17 +3,25 @@ import { cookies } from 'next/headers';
 
 const secret = new TextEncoder().encode(process.env.JWT_SECRET || 'fallback-dev-secret-change-in-prod');
 
-export async function createToken(payload: { userId: string; email: string; role: string }) {
-  return new SignJWT(payload)
+interface TokenPayload {
+  userId: string;
+  email: string;
+  role?: string;
+  purpose?: string;
+  [key: string]: any;
+}
+
+export async function createToken(payload: TokenPayload, expiresIn?: string) {
+  const jwt = new SignJWT(payload as any)
     .setProtectedHeader({ alg: 'HS256' })
-    .setExpirationTime('7d')
-    .sign(secret);
+    .setExpirationTime(expiresIn || '7d');
+  return jwt.sign(secret);
 }
 
 export async function verifyToken(token: string) {
   try {
     const { payload } = await jwtVerify(token, secret);
-    return payload as { userId: string; email: string; role: string };
+    return payload as any;
   } catch { return null; }
 }
 

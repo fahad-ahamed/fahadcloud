@@ -5,9 +5,10 @@ export async function POST(request: NextRequest) {
   try {
     const ip = request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip') || 'unknown';
     const body = await request.json();
-    const { email, password } = body;
+    const { email, username, password } = body;
+    const emailOrUsername = email || username || '';
 
-    const result = await authService.login(email, password, ip);
+    const result = await authService.login(emailOrUsername, password, ip);
 
     if (result.error) {
       const { status, ...errorBody } = result as any;

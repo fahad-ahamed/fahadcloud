@@ -64,26 +64,87 @@ export class HostingEngine {
     const port = await this.allocatePort();
 
     try {
-      // Ensure hosting directory exists
+      // Ensure hosting directory exists with index.html
       execSync(`mkdir -p ${hostDir}`, { encoding: 'utf-8' });
+      
+      // Ensure there's an index.html
+      const fs = require('fs');
+      const indexPath = `${hostDir}/index.html`;
+      if (!fs.existsSync(indexPath)) {
+        fs.writeFileSync(indexPath, `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Welcome to ${domainName}</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: 'Segoe UI', system-ui, sans-serif; background: linear-gradient(135deg, #059669 0%, #0d9488 100%); min-height: 100vh; display: flex; align-items: center; justify-content: center; }
+    .container { text-align: center; color: white; padding: 2rem; }
+    h1 { font-size: 3rem; margin-bottom: 1rem; }
+    p { font-size: 1.2rem; opacity: 0.9; margin-bottom: 0.5rem; }
+    .badge { display: inline-block; background: rgba(255,255,255,0.2); padding: 0.5rem 1rem; border-radius: 2rem; margin-top: 1rem; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Site Deployed!</h1>
+    <p>Your ${framework} app on <strong>${domainName}</strong> is live.</p>
+    <div class="badge">Powered by FahadCloud</div>
+  </div>
+</body>
+</html>`);
+      }
+
+      // Create nginx config for this site
+      const nginxConfDir = `/home/fahad/hosting/nginx`;
+      execSync(`mkdir -p ${nginxConfDir}`, { encoding: 'utf-8' });
+      
+      const nginxConf = `server {
+    listen ${config.port};
+    server_name ${domainName};
+    root /app;
+    index index.html;
+    
+    location / {
+        try_files $uri $uri/ /index.html;
+    }
+}`;
+      fs.writeFileSync(`${nginxConfDir}/${domainName}.conf`, nginxConf);
 
       // Stop and remove existing container if any
       try {
         execSync(`docker rm -f ${containerName} 2>/dev/null`, { encoding: 'utf-8', timeout: 10000 });
       } catch {}
 
-      // Create and start container
-      const dockerCmd = `docker run -d \
-        --name ${containerName} \
-        --memory="256m" \
-        --cpus="0.5" \
-        --restart unless-stopped \
-        -v ${hostDir}:/app \
-        -p ${port}:${config.port} \
-        -e NODE_ENV=production \
-        -e PORT=${config.port} \
-        ${config.image} \
-        sh -c "cd /app && ${config.startCmd}"`;
+      // Create and start container with proper volume mount
+      let dockerCmd: string;
+      if (framework === 'static' || config.image.includes('nginx')) {
+        // For static/nginx, mount the site directory and custom config
+        dockerCmd = `docker run -d \
+          --name ${containerName} \
+          --memory="256m" \
+          --cpus="0.5" \
+          --restart unless-stopped \
+          -v ${hostDir}:/usr/share/nginx/html:ro \
+          -v ${nginxConfDir}/${domainName}.conf:/etc/nginx/conf.d/default.conf:ro \
+          -p ${port}:80 \
+          ${config.image}`;
+      } else {
+        // For other frameworks, mount the app directory
+        dockerCmd = `docker run -d \
+          --name ${containerName} \
+          --memory="256m" \
+          --cpus="0.5" \
+          --restart unless-stopped \
+          -v ${hostDir}:/app \
+          -p ${port}:${config.port} \
+          -e NODE_ENV=production \
+          -e PORT=${config.port} \
+          -w /app \
+          ${config.image} \
+          sh -c "${config.startCmd}"`;
+      }
 
       const containerId = execSync(dockerCmd, { encoding: 'utf-8', timeout: 60000 }).trim();
 

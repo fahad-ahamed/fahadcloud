@@ -53,7 +53,7 @@ export default function AgentChatView({
       key={i}
       className={cn(
         'flex gap-3 p-4 rounded-xl',
-        msg.role === 'user' ? 'bg-emerald-50 ml-12' : msg.role === 'system' ? 'bg-amber-50 mx-4' : 'bg-slate-50 mr-4'
+        msg.role === 'user' ? 'bg-emerald-50 ml-6 sm:ml-12' : msg.role === 'system' ? 'bg-amber-50 mx-2 sm:mx-4' : 'bg-slate-50 mr-2 sm:mr-4'
       )}
     >
       <div
@@ -74,10 +74,10 @@ export default function AgentChatView({
   );
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 h-[calc(100vh-8rem)]">
+    <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 lg:gap-6 h-[calc(100vh-7rem)] lg:h-[calc(100vh-8rem)]">
       {/* Chat Area */}
-      <div className="lg:col-span-2 flex flex-col bg-white rounded-2xl border border-slate-200 overflow-hidden">
-        <div className="p-4 border-b border-slate-200 flex items-center justify-between">
+      <div className="lg:col-span-2 flex flex-col bg-white rounded-xl sm:rounded-2xl border border-slate-200 overflow-hidden">
+        <div className="p-3 sm:p-4 border-b border-slate-200 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-emerald-500 to-teal-500 flex items-center justify-center">
               <Bot className="w-4 h-4 text-white" />
@@ -98,15 +98,15 @@ export default function AgentChatView({
               <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-500 flex items-center justify-center mx-auto mb-4">
                 <Brain className="w-10 h-10 text-white" />
               </div>
-              <h3 className="text-xl font-bold mb-2">AI Cloud Engineer</h3>
-              <p className="text-slate-500 mb-6">I can help you deploy websites, configure domains, install SSL, manage DNS, and more!</p>
-              <div className="flex flex-wrap gap-2 justify-center">
-                {['Check domain availability', 'Deploy my React app', 'Install SSL', 'Check server status', 'Create a database', 'Fix my server'].map((s, i) => (
+              <h3 className="text-lg sm:text-xl font-bold mb-2">AI Cloud Engineer</h3>
+              <p className="text-sm sm:text-base text-slate-500 mb-6">I can help you deploy websites, configure domains, install SSL, manage DNS, and more!</p>
+              <div className="flex flex-wrap gap-1.5 sm:gap-2 justify-center px-2">
+                {['Check domain', 'Deploy app', 'Install SSL', 'Check status', 'Create DB', 'Fix server'].map((s, i) => (
                   <Button
                     key={i}
                     variant="outline"
                     size="sm"
-                    className="border-slate-300 text-slate-600 hover:bg-emerald-50 hover:text-emerald-700 hover:border-emerald-300"
+                    className="border-slate-200 focus:border-emerald-400 text-slate-600 hover:bg-emerald-50 hover:text-emerald-700 hover:border-emerald-300 text-xs sm:text-sm"
                     onClick={() => onSendMessage(s)}
                   >
                     {s}
@@ -117,7 +117,7 @@ export default function AgentChatView({
           )}
           {agentMessages.map((msg, i) => renderAgentMessage(msg, i))}
           {agentThinking && (
-            <div className="flex gap-3 p-4 rounded-xl bg-slate-50 mr-4">
+            <div className="flex gap-3 p-4 rounded-xl bg-slate-50 mr-2 sm:mr-4">
               <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-emerald-500 to-teal-500 flex items-center justify-center shrink-0">
                 <Bot className="w-4 h-4 text-white" />
               </div>
@@ -186,9 +186,9 @@ export default function AgentChatView({
         )}
 
         {/* Input */}
-        <div className="p-4 border-t border-slate-200 flex gap-2">
+        <div className="p-3 sm:p-4 border-t border-slate-200 flex gap-2">
           <Input
-            className="flex-1 bg-slate-50 border-slate-300 text-slate-900"
+            className="flex-1 bg-slate-50 border-slate-200 focus:border-emerald-400 text-slate-900"
             placeholder="Ask me anything... (e.g., 'Deploy my React app')"
             value={agentInput}
             onChange={e => setAgentInput(e.target.value)}
@@ -202,7 +202,7 @@ export default function AgentChatView({
       </div>
 
       {/* Side Panel */}
-      <div className="space-y-4 overflow-y-auto">
+      <div className="space-y-4 overflow-y-auto max-h-80 lg:max-h-none">
         {/* Active Tasks */}
         <Card className="bg-white border-slate-200 shadow-sm">
           <CardHeader className="pb-2">

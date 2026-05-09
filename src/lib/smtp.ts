@@ -1,8 +1,6 @@
 // ============================================
-// FahadCloud SMTP Email Utility
-// ============================================
-// Reads configuration from smtp-setup/ folder.
-// No hardcoded credentials - all configurable.
+// FahadCloud SMTP Email Utility v2.0
+// Enhanced deliverability, proper headers, DKIM-ready
 // ============================================
 
 import nodemailer from 'nodemailer';
@@ -47,27 +45,50 @@ function parseEnvFile(filePath: string): Record<string, string> {
 
 function loadSmtpConfig(): SmtpConfig {
   const projectRoot = process.cwd();
-  const envPath = join(projectRoot, 'smtp-setup', 'smtp-config.env');
-  const env = parseEnvFile(envPath);
+  // Check multiple config paths
+  const envPaths = [
+    join(projectRoot, 'smtp-setup', 'smtp-config.env'),
+    join(projectRoot, 'smtp-config.env'),
+  ];
+  
+  let env: Record<string, string> = {};
+  for (const p of envPaths) {
+    const parsed = parseEnvFile(p);
+    if (Object.keys(parsed).length > 0) {
+      env = parsed;
+      break;
+    }
+  }
 
   return {
-    host: env.SMTP_HOST || 'smtp.gmail.com',
-    port: parseInt(env.SMTP_PORT || '587', 10),
-    secure: env.SMTP_SECURE === 'true',
-    user: env.SMTP_USER || '',
-    pass: env.SMTP_PASS || '',
-    fromName: env.SMTP_FROM_NAME || 'FahadCloud',
-    fromEmail: env.SMTP_FROM_EMAIL || env.SMTP_USER || '',
+    host: env.SMTP_HOST || process.env.SMTP_HOST || 'smtp.gmail.com',
+    port: parseInt(env.SMTP_PORT || process.env.SMTP_PORT || '587', 10),
+    secure: (env.SMTP_SECURE || process.env.SMTP_SECURE) === 'true',
+    user: env.SMTP_USER || process.env.SMTP_USER || '',
+    pass: (env.SMTP_PASS || process.env.SMTP_PASS || '').replace(/\s+/g, ''),
+    fromName: env.SMTP_FROM_NAME || process.env.SMTP_FROM_NAME || 'FahadCloud',
+    fromEmail: env.SMTP_FROM_EMAIL || process.env.SMTP_FROM_EMAIL || env.SMTP_USER || process.env.SMTP_USER || '',
   };
 }
 
 export function loadOwnerConfig(): OwnerConfig {
   const projectRoot = process.cwd();
-  const envPath = join(projectRoot, 'smtp-setup', 'owner-config.env');
-  const env = parseEnvFile(envPath);
+  const envPaths = [
+    join(projectRoot, 'smtp-setup', 'owner-config.env'),
+    join(projectRoot, 'owner-config.env'),
+  ];
+  
+  let env: Record<string, string> = {};
+  for (const p of envPaths) {
+    const parsed = parseEnvFile(p);
+    if (Object.keys(parsed).length > 0) {
+      env = parsed;
+      break;
+    }
+  }
 
   return {
-    ownerEmail: (env.OWNER_EMAIL || '').toLowerCase().trim(),
+    ownerEmail: (env.OWNER_EMAIL || process.env.OWNER_EMAIL || '').toLowerCase().trim(),
   };
 }
 
@@ -88,16 +109,19 @@ function getTransporter(): nodemailer.Transporter {
     host: config.host,
     port: config.port,
     secure: config.secure,
+    requireTLS: true,
+    connectionTimeout: 15000,
+    greetingTimeout: 10000,
+    socketTimeout: 20000,
     auth: {
       user: config.user,
-      pass: config.pass.replace(/\s+/g, ''), // Strip spaces - Gmail app passwords work without spaces
+      pass: config.pass.replace(/\s+/g, ''),
     },
   });
 
   return cachedTransporter;
 }
 
-// Reset transporter (call after config change)
 export function resetTransporter(): void {
   if (cachedTransporter) {
     cachedTransporter.close();
@@ -105,13 +129,14 @@ export function resetTransporter(): void {
   }
 }
 
-// ============ EMAIL SENDER ============
+// ============ EMAIL SENDER (ENHANCED) ============
 
 export interface SendEmailOptions {
   to: string;
   subject: string;
   html: string;
   text?: string;
+  replyTo?: string;
 }
 
 export async function sendEmail(options: SendEmailOptions): Promise<{ success: boolean; messageId?: string; error?: string }> {
@@ -122,15 +147,65 @@ export async function sendEmail(options: SendEmailOptions): Promise<{ success: b
     const result = await transporter.sendMail({
       from: `"${config.fromName}" <${config.fromEmail}>`,
       to: options.to,
+      replyTo: options.replyTo || config.fromEmail,
       subject: options.subject,
       html: options.html,
       text: options.text || options.html.replace(/<[^>]*>/g, ''),
+      headers: {
+        'X-Mailer': 'FahadCloud Mailer v2.0',
+        'X-Priority': '1',
+        'X-Auto-Response-Suppress': 'OOF, DR, RN, NRN',
+        'List-Unsubscribe': `<mailto:${config.fromEmail}?subject=unsubscribe>`,
+        'Precedence': 'bulk',
+        'X-Entity-Ref-ID': `fc-${Date.now()}-${Math.random().toString(36).substr(2, 8)}`,
+      },
+      dkim: {
+        domainName: 'fahadcloud.com',
+        keySelector: 'default',
+        privateKey: '',
+      },
     });
 
+    console.log(`[SMTP] Email sent to ${options.to}, messageId: ${result.messageId}, response: ${result.response}`);
     return { success: true, messageId: result.messageId };
   } catch (error: any) {
-    console.error('SMTP send error:', error.message);
+    console.error('[SMTP] Send error:', error.message, '| To:', options.to);
     return { success: false, error: error.message };
+  }
+}
+
+// ============ TEST CONNECTION ============
+
+export async function testSmtpConnection(): Promise<{ success: boolean; error?: string; details?: string }> {
+  try {
+    const config = loadSmtpConfig();
+    
+    if (!config.user || !config.pass) {
+      return { success: false, error: 'SMTP credentials not configured', details: 'Check smtp-setup/smtp-config.env' };
+    }
+
+    console.log('[SMTP TEST] Testing connection to', config.host + ':' + config.port, 'as', config.user);
+    
+    const transporter = nodemailer.createTransport({
+      host: config.host,
+      port: config.port,
+      secure: config.secure,
+      requireTLS: true,
+      connectionTimeout: 15000,
+      auth: {
+        user: config.user,
+        pass: config.pass.replace(/\s+/g, ''),
+      },
+    });
+
+    await transporter.verify();
+    console.log('[SMTP TEST] Connection verified successfully!');
+    transporter.close();
+    
+    return { success: true, details: 'Connected to ' + config.host + ':' + config.port + ' as ' + config.user };
+  } catch (error: any) {
+    console.error('[SMTP TEST] Connection failed:', error.message);
+    return { success: false, error: error.message, details: 'Failed to connect: ' + error.message };
   }
 }
 
@@ -176,7 +251,7 @@ export async function sendOtpEmail(toEmail: string, otp: string): Promise<{ succ
           </div>
         </div>
         <div class="footer">
-          <p>FahadCloud AI-Powered Domain & Hosting Platform</p>
+          <p>FahadCloud AI-Powered Domain &amp; Hosting Platform</p>
           <p>This is an automated message from <a href="http://52.201.210.162:3000">fahadcloud.com</a></p>
         </div>
       </div>
@@ -216,7 +291,7 @@ export async function sendWelcomeEmail(toEmail: string, name: string): Promise<{
         <div class="body">
           <p style="color: #334155; font-size: 16px;">Hi ${name},</p>
           <p style="color: #475569; font-size: 14px; line-height: 1.6;">
-            Your account has been created successfully on FahadCloud - the AI-Powered Domain & Hosting Platform.
+            Your account has been created successfully on FahadCloud - the AI-Powered Domain &amp; Hosting Platform.
           </p>
           <p style="color: #475569; font-size: 14px; line-height: 1.6;">
             You can now register domains, deploy websites, manage hosting, and use our AI Cloud Engineer to automate your infrastructure.
@@ -226,7 +301,7 @@ export async function sendWelcomeEmail(toEmail: string, name: string): Promise<{
           </div>
         </div>
         <div class="footer">
-          <p>FahadCloud AI-Powered Domain & Hosting Platform</p>
+          <p>FahadCloud AI-Powered Domain &amp; Hosting Platform</p>
         </div>
       </div>
     </body>
@@ -282,7 +357,7 @@ export async function sendRegistrationOtpEmail(toEmail: string, otp: string, nam
           </div>
         </div>
         <div class="footer">
-          <p>FahadCloud AI-Powered Domain & Hosting Platform</p>
+          <p>FahadCloud AI-Powered Domain &amp; Hosting Platform</p>
           <p>This is an automated message from <a href="http://52.201.210.162:3000">fahadcloud.com</a></p>
         </div>
       </div>
@@ -355,7 +430,7 @@ export async function sendActionVerificationEmail(toEmail: string, otp: string, 
           </div>
         </div>
         <div class="footer">
-          <p>FahadCloud AI-Powered Domain & Hosting Platform</p>
+          <p>FahadCloud AI-Powered Domain &amp; Hosting Platform</p>
           <p>This is an automated security message from <a href="http://52.201.210.162:3000">fahadcloud.com</a></p>
         </div>
       </div>
@@ -368,5 +443,67 @@ export async function sendActionVerificationEmail(toEmail: string, otp: string, 
     subject: `FahadCloud Security - ${label} Verification (Code: ${otp})`,
     html,
     text: `Your FahadCloud verification code for ${label} is: ${otp}. This code expires in 10 minutes. If you did not request this, secure your account immediately.`,
+  });
+}
+
+// ============ PASSWORD RESET EMAIL ============
+
+export async function sendPasswordResetEmail(toEmail: string, otp: string, name: string): Promise<{ success: boolean; error?: string }> {
+  const html = `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <style>
+        body { font-family: 'Segoe UI', Arial, sans-serif; margin: 0; padding: 0; background: #f8fafc; }
+        .container { max-width: 600px; margin: 40px auto; background: #ffffff; border-radius: 16px; overflow: hidden; box-shadow: 0 4px 24px rgba(0,0,0,0.08); }
+        .header { background: linear-gradient(135deg, #dc2626 0%, #b91c1c 50%, #991b1b 100%); padding: 32px 40px; text-align: center; }
+        .header h1 { color: #ffffff; margin: 0; font-size: 24px; font-weight: 700; }
+        .header p { color: rgba(255,255,255,0.9); margin: 8px 0 0; font-size: 14px; }
+        .body { padding: 40px; }
+        .otp-label { color: #64748b; font-size: 14px; margin-bottom: 8px; }
+        .otp-code { font-size: 36px; font-weight: 800; letter-spacing: 8px; color: #dc2626; text-align: center; padding: 20px; background: #fef2f2; border-radius: 12px; border: 2px dashed #dc2626; margin: 16px 0; }
+        .info-box { color: #1e40af; font-size: 13px; text-align: center; margin-top: 16px; padding: 12px; background: #eff6ff; border-radius: 8px; border: 1px solid #bfdbfe; }
+        .warning { color: #dc2626; font-size: 13px; text-align: center; margin-top: 16px; padding: 12px; background: #fef2f2; border-radius: 8px; }
+        .footer { text-align: center; padding: 20px 40px; color: #94a3b8; font-size: 12px; border-top: 1px solid #e2e8f0; }
+        .footer a { color: #059669; text-decoration: none; }
+      </style>
+    </head>
+    <body>
+      <div class="container">
+        <div class="header">
+          <h1>FahadCloud Security</h1>
+          <p>Password Reset Request</p>
+        </div>
+        <div class="body">
+          <p style="color: #334155; font-size: 16px;">Hello ${name},</p>
+          <p style="color: #475569; font-size: 14px; line-height: 1.6;">
+            We received a request to reset your FahadCloud account password. Use the verification code below to proceed:
+          </p>
+          <div class="otp-label" style="text-align: center;">Your Password Reset Code</div>
+          <div class="otp-code">${otp}</div>
+          <p style="color: #475569; font-size: 13px; text-align: center;">
+            This code expires in <strong>10 minutes</strong>.
+          </p>
+          <div class="info-box">
+            After verifying this code, you will be able to set a new password for your account.
+          </div>
+          <div class="warning">
+            If you did not request a password reset, please ignore this email. Your account is safe. Never share this code with anyone.
+          </div>
+        </div>
+        <div class="footer">
+          <p>FahadCloud AI-Powered Domain &amp; Hosting Platform</p>
+          <p>This is an automated security message from <a href="http://52.201.210.162:3000">fahadcloud.com</a></p>
+        </div>
+      </div>
+    </body>
+    </html>
+  `;
+
+  return sendEmail({
+    to: toEmail,
+    subject: 'FahadCloud - Password Reset Code: ' + otp,
+    html,
+    text: 'Your FahadCloud password reset code is: ' + otp + '. This code expires in 10 minutes. If you did not request a password reset, ignore this email.',
   });
 }

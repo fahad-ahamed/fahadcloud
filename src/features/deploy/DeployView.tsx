@@ -40,10 +40,10 @@ export default function DeployView({
   onDeploy, onNavigate,
 }: DeployViewProps) {
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 animate-fade-in">
       <Card className="bg-gradient-to-r from-orange-50 to-red-50 border-orange-500/20">
         <CardContent className="p-6">
-          <h2 className="text-2xl font-bold mb-2">One-Click AI Deployment</h2>
+          <h2 className="text-xl sm:text-2xl font-bold mb-2">One-Click AI Deployment</h2>
           <p className="text-slate-500">Select your framework and domain, and our AI will handle everything automatically.</p>
         </CardContent>
       </Card>
@@ -54,17 +54,17 @@ export default function DeployView({
           <CardTitle className="text-lg">Select Framework</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
             {frameworks.map(f => (
               <button
                 key={f.id}
                 onClick={() => setDeployFramework(f.id)}
                 className={cn('p-4 rounded-xl border transition text-center', deployFramework === f.id ? 'border-emerald-500 bg-emerald-50' : 'border-slate-200 bg-slate-50 hover:bg-slate-100')}
               >
-                <div className={cn('w-12 h-12 rounded-xl bg-gradient-to-br mx-auto mb-2 flex items-center justify-center', f.color)}>
+                <div className={cn('w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-gradient-to-br mx-auto mb-2 flex items-center justify-center', f.color)}>
                   <f.icon className="w-6 h-6 text-white" />
                 </div>
-                <div className="text-sm font-medium">{f.name}</div>
+                <div className="text-xs sm:text-sm font-medium">{f.name}</div>
               </button>
             ))}
           </div>
@@ -79,10 +79,10 @@ export default function DeployView({
         <CardContent>
           {domains.length > 0 ? (
             <Select value={deployDomain} onValueChange={setDeployDomain}>
-              <SelectTrigger className="bg-white border-slate-300">
+              <SelectTrigger className="bg-white border-slate-200 focus:border-emerald-400">
                 <SelectValue placeholder="Choose a domain" />
               </SelectTrigger>
-              <SelectContent className="bg-white border-slate-300">
+              <SelectContent className="bg-white border-slate-200 focus:border-emerald-400">
                 {domains.map(d => (
                   <SelectItem key={d.id} value={d.name}>
                     {d.name}

@@ -27,17 +27,17 @@ export default function DnsManager({
   onLoadDnsRecords, onAddDnsRecord, onNavigate,
 }: DnsManagerProps) {
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 animate-fade-in">
       <Card className="bg-white border-slate-200 shadow-sm">
         <CardHeader>
           <CardTitle className="text-lg">DNS Manager</CardTitle>
         </CardHeader>
         <CardContent>
           <Select value={dnsDomain} onValueChange={setDnsDomain}>
-            <SelectTrigger className="bg-white border-slate-300 mb-4">
+            <SelectTrigger className="bg-white border-slate-200 focus:border-emerald-400 mb-4">
               <SelectValue placeholder="Select a domain" />
             </SelectTrigger>
-            <SelectContent className="bg-white border-slate-300">
+            <SelectContent className="bg-white border-slate-200 focus:border-emerald-400">
               {domains.map(d => (
                 <SelectItem key={d.id} value={d.name}>
                   {d.name}
@@ -65,7 +65,7 @@ export default function DnsManager({
                 </div>
               ) : (
                 <div className="overflow-x-auto">
-                  <table className="w-full text-sm">
+                  <table className="w-full text-sm min-w-[400px]">
                     <thead>
                       <tr className="text-slate-500 text-left">
                         <th className="pb-2">Type</th>
@@ -104,19 +104,19 @@ export default function DnsManager({
               <CardTitle className="text-sm">Add DNS Record</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
                 <Select value={newDnsRecord.type} onValueChange={v => setNewDnsRecord(p => ({ ...p, type: v }))}>
-                  <SelectTrigger className="bg-white border-slate-300">
+                  <SelectTrigger className="bg-white border-slate-200 focus:border-emerald-400">
                     <SelectValue />
                   </SelectTrigger>
-                  <SelectContent className="bg-white border-slate-300">
+                  <SelectContent className="bg-white border-slate-200 focus:border-emerald-400">
                     {['A', 'AAAA', 'CNAME', 'MX', 'TXT', 'NS', 'SRV'].map(t => (
                       <SelectItem key={t} value={t}>{t}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
-                <Input className="bg-white border-slate-300" placeholder="Name" value={newDnsRecord.name} onChange={e => setNewDnsRecord(p => ({ ...p, name: e.target.value }))} />
-                <Input className="bg-white border-slate-300" placeholder="Value" value={newDnsRecord.value} onChange={e => setNewDnsRecord(p => ({ ...p, value: e.target.value }))} />
+                <Input className="bg-white border-slate-200 focus:border-emerald-400" placeholder="Name" value={newDnsRecord.name} onChange={e => setNewDnsRecord(p => ({ ...p, name: e.target.value }))} />
+                <Input className="bg-white border-slate-200 focus:border-emerald-400" placeholder="Value" value={newDnsRecord.value} onChange={e => setNewDnsRecord(p => ({ ...p, value: e.target.value }))} />
                 <Button className="bg-emerald-600 hover:bg-emerald-700" onClick={onAddDnsRecord}>
                   <Plus className="w-4 h-4" />
                 </Button>

@@ -10,7 +10,6 @@ class ApiClient {
     });
 
     if (res.status === 401) {
-      // Clear auth state - will be handled by the auth context
       throw new Error('Unauthorized');
     }
 
@@ -58,6 +57,19 @@ class ApiClient {
 
   async verifyAction(action: string, otp: string) {
     return this.request('/api/auth/verify-action', { method: 'PUT', body: JSON.stringify({ action, otp }) });
+  }
+
+  // Password Reset
+  async requestPasswordReset(email: string) {
+    return this.request('/api/auth/request-reset', { method: 'POST', body: JSON.stringify({ email }) });
+  }
+
+  async verifyPasswordReset(email: string, otp: string) {
+    return this.request('/api/auth/verify-reset', { method: 'POST', body: JSON.stringify({ email, otp }) });
+  }
+
+  async resetPassword(resetToken: string, newPassword: string) {
+    return this.request('/api/auth/reset-password', { method: 'POST', body: JSON.stringify({ resetToken, newPassword }) });
   }
 
   // Domains
@@ -141,7 +153,7 @@ class ApiClient {
   }
 
   async uploadFile(formData: FormData) {
-    return this.request('/api/upload', { method: 'POST', body: formData, headers: {} }); // No Content-Type for FormData
+    return this.request('/api/upload', { method: 'POST', body: formData, headers: {} });
   }
 
   // User profile
@@ -192,15 +204,19 @@ class ApiClient {
     return this.request('/api/agent/monitor');
   }
 
-  // Admin
+  // ==================== ADMIN APIs ====================
+
+  // Admin Dashboard
   async getAdminDashboard() {
     return this.request('/api/admin');
   }
 
+  // Admin Stats (enhanced with active/blocked/unverified)
   async getAdminStats() {
     return this.request('/api/admin/stats');
   }
 
+  // Admin Users (enhanced with block/unblock/delete)
   async getAdminUsers(params?: any) {
     const query = new URLSearchParams(params).toString();
     return this.request(`/api/admin/users${query ? '?' + query : ''}`);
@@ -210,6 +226,19 @@ class ApiClient {
     return this.request('/api/admin/users', { method: 'PUT', body: JSON.stringify(data) });
   }
 
+  async blockUser(userId: string) {
+    return this.request('/api/admin/users', { method: 'PUT', body: JSON.stringify({ userId, action: 'block' }) });
+  }
+
+  async unblockUser(userId: string, role?: string) {
+    return this.request('/api/admin/users', { method: 'PUT', body: JSON.stringify({ userId, action: 'unblock', role }) });
+  }
+
+  async deleteUser(userId: string) {
+    return this.request(`/api/admin/users?userId=${userId}`, { method: 'DELETE' });
+  }
+
+  // Admin Payments
   async getAdminPayments(params?: any) {
     const query = new URLSearchParams(params).toString();
     return this.request(`/api/admin/payments${query ? '?' + query : ''}`);
@@ -223,6 +252,7 @@ class ApiClient {
     return this.request('/api/admin/payments/reject', { method: 'POST', body: JSON.stringify({ paymentId, reason }) });
   }
 
+  // Admin Domains
   async getAdminDomains(params?: any) {
     const query = new URLSearchParams(params).toString();
     return this.request(`/api/admin/domains${query ? '?' + query : ''}`);
@@ -236,11 +266,56 @@ class ApiClient {
     return this.request(`/api/admin/domains?domainId=${domainId}`, { method: 'DELETE' });
   }
 
+  // Admin Logs (Activity Logging)
   async getAdminLogs(params?: any) {
     const query = new URLSearchParams(params).toString();
     return this.request(`/api/admin/logs${query ? '?' + query : ''}`);
   }
 
+  // Admin Analytics
+  async getAdminAnalytics(params?: { period?: string; startDate?: string; endDate?: string }) {
+    const query = new URLSearchParams(params as any).toString();
+    return this.request(`/api/admin/analytics${query ? '?' + query : ''}`);
+  }
+
+  // Admin Settings
+  async getAdminSettings() {
+    return this.request('/api/admin/settings');
+  }
+
+  async updateAdminSettings(settings: Record<string, string>) {
+    return this.request('/api/admin/settings', { method: 'PUT', body: JSON.stringify({ settings }) });
+  }
+
+  // Admin Notifications
+  async getAdminNotifications(params?: any) {
+    const query = new URLSearchParams(params).toString();
+    return this.request(`/api/admin/notifications${query ? '?' + query : ''}`);
+  }
+
+  async sendNotification(data: { userId: string; title: string; message: string; type?: string }) {
+    return this.request('/api/admin/notifications', { method: 'POST', body: JSON.stringify(data) });
+  }
+
+  async markNotificationRead(notificationId: string) {
+    return this.request('/api/admin/notifications', { method: 'PUT', body: JSON.stringify({ notificationId }) });
+  }
+
+  async markAllNotificationsRead() {
+    return this.request('/api/admin/notifications', { method: 'PUT', body: JSON.stringify({ markAllRead: true }) });
+  }
+
+  async deleteNotification(notificationId: string) {
+    return this.request(`/api/admin/notifications?notificationId=${notificationId}`, { method: 'DELETE' });
+  }
+
+  // Admin Activity
+  async getAdminActivity(params?: { limit?: number }) {
+    const query = new URLSearchParams(params as any).toString();
+    return this.request(`/api/admin/activity${query ? '?' + query : ''}`);
+  }
+
+  // AI Admin
   async getAdminAiStats() {
     return this.request('/api/agent/admin');
   }

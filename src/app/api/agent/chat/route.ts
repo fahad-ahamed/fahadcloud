@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { PrismaClient } from '@prisma/client';
 import { getOrchestrator } from '@/lib/agent/orchestrator';
 import { classifyIntent } from '@/lib/agent/core';
+import { getAutoLearningEngine } from '@/lib/agent/auto-learning';
 
 const prisma = new PrismaClient();
 
@@ -67,6 +68,15 @@ export async function POST(request: NextRequest) {
 
     // Classify intent using the original classifier
     const intentResult = classifyIntent(message);
+
+    // Enrich with Auto Learning context
+    let learningContext = '';
+    try {
+      const autoLearning = getAutoLearningEngine();
+      learningContext = await autoLearning.getContextForQuery(message) || '';
+      // Run a learning cycle in background (non-blocking)
+      autoLearning.runLearningCycle().catch(() => {});
+    } catch {}
 
     // Process through the multi-agent orchestrator
     const orchestrator = getOrchestrator();

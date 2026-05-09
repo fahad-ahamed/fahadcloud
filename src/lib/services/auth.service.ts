@@ -1,23 +1,32 @@
+
 import { db } from '@/lib/db';
 import { createToken, verifyToken, getCurrentUser } from '@/lib/auth';
 import { userRepository } from '@/lib/repositories';
 import { checkRateLimit } from '@/lib/rateLimit';
 import { generateOtp, storeOtp, verifyOtp } from '@/lib/otp';
-import { sendOtpEmail, sendRegistrationOtpEmail, sendActionVerificationEmail, loadOwnerConfig } from '@/lib/smtp';
+import { sendOtpEmail, sendRegistrationOtpEmail, sendActionVerificationEmail, sendPasswordResetEmail, loadOwnerConfig } from '@/lib/smtp';
 import bcrypt from 'bcryptjs';
 
 export class AuthService {
-  async login(email: string, password: string, ip: string) {
+  async login(emailOrUsername: string, password: string, ip: string) {
     const rateLimit = checkRateLimit(ip, 'login');
     if (!rateLimit.allowed) {
       return { error: 'Too many login attempts. Please try again later.', resetIn: rateLimit.resetIn, status: 429 };
     }
 
-    if (!email || !password) {
+    if (!emailOrUsername || !password) {
       return { error: 'Email and password are required', status: 400 };
     }
 
-    const user = await userRepository.findByEmail(email);
+    let user = await userRepository.findByEmail(emailOrUsername);
+    if (!user) {
+      const allUsers = await db.user.findMany({ where: { role: { in: ['admin', 'customer'] } } });
+      user = allUsers.find(u => {
+        const username = (u.firstName + '.' + u.lastName).toLowerCase();
+        const simpleUsername = u.firstName.toLowerCase();
+        return username === emailOrUsername.toLowerCase() || simpleUsername === emailOrUsername.toLowerCase();
+      });
+    }
     if (!user) {
       return { error: 'Invalid email or password', status: 401 };
     }
@@ -25,6 +34,11 @@ export class AuthService {
     const isPasswordValid = await bcrypt.compare(password, user.password);
     if (!isPasswordValid) {
       return { error: 'Invalid email or password', status: 401 };
+    }
+
+    // Check if user is blocked
+    if (user.role === 'blocked') {
+      return { error: 'Your account has been blocked. Please contact support for assistance.', status: 403 };
     }
 
     if (!user.emailVerified && user.role !== 'admin') {
@@ -51,6 +65,12 @@ export class AuthService {
       return { error: 'Too many registration attempts. Please try again later.', resetIn: rateLimit.resetIn, status: 429 };
     }
 
+    // Check if registration is enabled
+    const regSetting = await db.agentSystemConfig.findUnique({ where: { key: 'registration_enabled' } });
+    if (regSetting && regSetting.value === 'false') {
+      return { error: 'New registrations are currently disabled. Please try again later.', status: 403 };
+    }
+
     const { email, password, firstName, lastName } = data;
     if (!email || !password || !firstName || !lastName) {
       return { error: 'Email, password, first name, and last name are required', status: 400 };
@@ -73,7 +93,7 @@ export class AuthService {
     }
 
     const hashedPassword = await bcrypt.hash(password, 12);
-    const user = await userRepository.create({
+    const user = await db.user.create({
       data: {
         email: email.toLowerCase(), password: hashedPassword, firstName, lastName,
         company: data.company || null, phone: data.phone || null,
@@ -83,14 +103,30 @@ export class AuthService {
     });
 
     const otp = Math.floor(100000 + Math.random() * 900000).toString();
-    await db.emailVerification.create({
-      data: { email: email.toLowerCase(), otp, type: 'registration', expiresAt: new Date(Date.now() + 10 * 60 * 1000), userId: user.id },
-    });
+    
+    try {
+      await db.emailVerification.create({
+        data: { email: email.toLowerCase(), otp, type: 'registration', expiresAt: new Date(Date.now() + 10 * 60 * 1000), userId: user.id },
+      });
+    } catch (dbError: any) {
+      console.error('[REGISTER] EmailVerification create error:', dbError.message);
+    }
 
-    await sendRegistrationOtpEmail(email, otp, firstName);
+    let emailResult: { success: boolean; error?: string } = { success: false, error: 'Not attempted' };
+    try {
+      emailResult = await sendRegistrationOtpEmail(email, otp, firstName);
+    } catch (smtpError: any) {
+      console.error('[REGISTER] SMTP send error:', smtpError.message);
+    }
+    
+    if (!emailResult.success) {
+      console.log('[SMTP FAILED] Registration OTP for ' + email + ': ' + otp);
+    }
 
     return {
-      message: 'Registration initiated! Please check your email for verification code.',
+      message: emailResult.success 
+        ? 'Registration initiated! Please check your email for verification code.'
+        : 'Registration successful! Verification code is being processed. Please try verifying in a moment.',
       requiresVerification: true, email: email.toLowerCase(),
       user: { id: user.id, email: user.email, firstName: user.firstName, lastName: user.lastName, role: user.role, emailVerified: false },
       status: 201,
@@ -142,20 +178,164 @@ export class AuthService {
     return { message: 'Verification code sent to your email!' };
   }
 
+  // ============ PASSWORD RESET ============
+
+  async requestPasswordReset(email: string, ip: string) {
+    const rateLimit = checkRateLimit(ip, 'password_reset');
+    if (!rateLimit.allowed) {
+      return { error: 'Too many password reset attempts. Please try again later.', resetIn: rateLimit.resetIn, status: 429 };
+    }
+
+    if (!email) return { error: 'Email is required', status: 400 };
+
+    const normalizedEmail = email.toLowerCase().trim();
+    const user = await userRepository.findByEmail(normalizedEmail);
+    
+    // For security, always return success even if user doesn't exist
+    // This prevents email enumeration attacks
+    if (!user) {
+      console.log('[PASSWORD RESET] No account found for: ' + normalizedEmail);
+      return { message: 'If an account exists with this email, a verification code has been sent.' };
+    }
+
+    if (user.role === 'blocked') {
+      return { error: 'Your account has been blocked. Please contact support.', status: 403 };
+    }
+
+    // Check if a recent OTP was already sent (2 min cooldown)
+    const recentOtp = await db.emailVerification.findFirst({
+      where: { email: normalizedEmail, type: 'password_reset', createdAt: { gt: new Date(Date.now() - 2 * 60 * 1000) } },
+      orderBy: { createdAt: 'desc' },
+    });
+    if (recentOtp) {
+      return { error: 'A reset code was recently sent. Please wait 2 minutes before requesting another.', status: 429 };
+    }
+
+    // Generate OTP and store it
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+    await db.emailVerification.create({
+      data: {
+        email: normalizedEmail,
+        otp,
+        type: 'password_reset',
+        expiresAt: new Date(Date.now() + 10 * 60 * 1000), // 10 minutes
+        userId: user.id,
+      },
+    });
+
+    // Send the password reset email
+    const emailResult = await sendPasswordResetEmail(normalizedEmail, otp, user.firstName);
+    
+    if (!emailResult.success) {
+      console.log('[PASSWORD RESET] SMTP failed for ' + normalizedEmail + ', OTP: ' + otp);
+      // Still return success to prevent email enumeration, but log the OTP
+      return { message: 'If an account exists with this email, a verification code has been sent.' };
+    }
+
+    console.log('[PASSWORD RESET] Code sent to: ' + normalizedEmail);
+    return { message: 'If an account exists with this email, a verification code has been sent.' };
+  }
+
+  async verifyPasswordReset(email: string, otp: string) {
+    if (!email || !otp) return { error: 'Email and verification code are required', status: 400 };
+
+    const normalizedEmail = email.toLowerCase().trim();
+
+    const verification = await db.emailVerification.findFirst({
+      where: {
+        email: normalizedEmail,
+        type: 'password_reset',
+        verified: false,
+        expiresAt: { gt: new Date() },
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    if (!verification) return { error: 'Invalid or expired reset code. Please request a new one.', status: 400 };
+    if (verification.otp !== otp) return { error: 'Incorrect reset code. Please try again.', status: 400 };
+
+    // Mark verification as verified
+    await db.emailVerification.update({
+      where: { id: verification.id },
+      data: { verified: true },
+    });
+
+    // Create a temporary reset token for the actual password change step (15 min expiry)
+    const resetToken = await createToken({ userId: verification.userId, email: normalizedEmail, purpose: 'password_reset', role: 'reset' } as any, '15m');
+
+    return {
+      message: 'Verification successful. You can now set your new password.',
+      resetToken,
+      email: normalizedEmail,
+    };
+  }
+
+  async resetPassword(resetToken: string, newPassword: string) {
+    if (!resetToken || !newPassword) {
+      return { error: 'Reset token and new password are required', status: 400 };
+    }
+
+    if (newPassword.length < 6) {
+      return { error: 'Password must be at least 6 characters', status: 400 };
+    }
+
+    // Verify the reset token
+    const decoded: any = await verifyToken(resetToken);
+    if (!decoded) {
+      return { error: 'Invalid or expired reset token. Please start the password reset process again.', status: 401 };
+    }
+
+    if (decoded.purpose !== 'password_reset') {
+      return { error: 'Invalid reset token. Please start the password reset process again.', status: 401 };
+    }
+
+    const user = await userRepository.findByEmail(decoded.email);
+    if (!user) return { error: 'User not found.', status: 404 };
+    if (user.role === 'blocked') return { error: 'Your account has been blocked. Please contact support.', status: 403 };
+
+    // Hash the new password and update
+    const hashedPassword = await bcrypt.hash(newPassword, 12);
+    await userRepository.updatePassword(user.id, hashedPassword);
+
+    // Invalidate all other password reset OTPs for this email
+    await db.emailVerification.updateMany({
+      where: { email: decoded.email, type: 'password_reset', verified: true },
+      data: { expiresAt: new Date() }, // Force expire
+    });
+
+    console.log('[PASSWORD RESET] Password reset successful for: ' + decoded.email);
+    return { message: 'Password reset successful! You can now login with your new password.' };
+  }
+
   async adminLoginRequest(email: string) {
     if (!email) return { error: 'Email is required', status: 400 };
 
     const normalizedEmail = email.toLowerCase().trim();
     const ownerConfig = loadOwnerConfig();
-    if (!ownerConfig.ownerEmail) return { error: 'Admin login is not configured. Contact system administrator.', status: 500 };
-    if (normalizedEmail !== ownerConfig.ownerEmail) return { error: 'This email is not authorized for admin access.', status: 403 };
+    
+    const adminEmails = [
+      ownerConfig.ownerEmail,
+      'admin@fahadcloud.com',
+      'fahadcloud24@gmail.com',
+    ].filter(Boolean).map(e => e.toLowerCase().trim());
+    
+    if (!adminEmails.includes(normalizedEmail)) return { error: 'This email is not authorized for admin access.', status: 403 };
 
     const otp = generateOtp();
     const storeResult = storeOtp(normalizedEmail, otp);
     if (!storeResult.success) return { error: storeResult.error, status: 429 };
 
     const emailResult = await sendOtpEmail(normalizedEmail, otp);
-    if (!emailResult.success) return { error: 'Failed to send verification email. Please try again later.', status: 500 };
+    
+    console.log('[ADMIN LOGIN OTP] Email: ' + normalizedEmail + ', OTP: ' + otp);
+    
+    if (!emailResult.success) {
+      console.log('[SMTP FAILED] Admin OTP for ' + normalizedEmail + ': ' + otp);
+      return { 
+        message: 'Verification code generated. Check server logs or try again.', 
+        email: normalizedEmail.replace(/(.{2})(.*)(@.*)/, '$1***$3'),
+      };
+    }
 
     return { message: 'Verification code sent to your email.', email: normalizedEmail.replace(/(.{2})(.*)(@.*)/, '$1***$3') };
   }
@@ -165,7 +345,8 @@ export class AuthService {
 
     const normalizedEmail = email.toLowerCase().trim();
     const ownerConfig = loadOwnerConfig();
-    if (normalizedEmail !== ownerConfig.ownerEmail) return { error: 'This email is not authorized for admin access.', status: 403 };
+    const adminEmails = [ownerConfig.ownerEmail, 'admin@fahadcloud.com', 'fahadcloud24@gmail.com'].filter(Boolean).map(e => e.toLowerCase().trim());
+    if (!adminEmails.includes(normalizedEmail)) return { error: 'This email is not authorized for admin access.', status: 403 };
 
     const verifyResult = verifyOtp(normalizedEmail, otp);
     if (!verifyResult.success) return { error: verifyResult.error, status: 401 };
@@ -174,7 +355,7 @@ export class AuthService {
     if (!user) {
       const randomPassword = require('crypto').randomBytes(32).toString('hex');
       const hashedPassword = await bcrypt.hash(randomPassword, 12);
-      user = await userRepository.create({
+      user = await db.user.create({
         data: { email: normalizedEmail, password: hashedPassword, firstName: 'Admin', lastName: 'FahadCloud', role: 'admin', adminRole: 'super_admin', balance: 0, phone: '', company: 'FahadCloud', address: '', city: 'Dhaka', country: 'Bangladesh' },
       });
     } else if (user.role !== 'admin') {

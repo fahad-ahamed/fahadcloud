@@ -65,6 +65,9 @@ async function checkRdapAvailability(domain: string, tld: string): Promise<{ ava
   }
 }
 
+// Free TLDs that we can register directly
+const FREE_TLDS = ['fahadcloud.com', 'tk', 'ml', 'ga', 'cf', 'eu.org', 'pp.ua'];
+
 export async function GET(request: NextRequest) {
   try {
     const ip = request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip') || 'unknown';
@@ -110,77 +113,87 @@ export async function GET(request: NextRequest) {
     // Check if already registered in our system
     const existingDomain = await db.domain.findUnique({ where: { name: domainLower } });
 
-    // Get pricing for the TLD
-    const tldPricing = await db.tldPricing.findUnique({ where: { tld: `.${tld}` } });
+    // Check if this is a free TLD
+    const isFreeTld = FREE_TLDS.includes(tld);
 
-    // Also check common TLDs
-    const commonTlds = ['.com', '.net', '.org', '.io', '.dev', '.app', '.me', '.co', '.xyz', '.info', '.biz', '.online'];
-    const tldsToCheck = new Set<string>([`.${tld}`]);
-    for (const ct of commonTlds) {
-      tldsToCheck.add(ct);
-    }
-
-    const allPricing = await db.tldPricing.findMany({
-      where: { tld: { in: Array.from(tldsToCheck) } },
+    // Get pricing for the TLD (try both with and without dot prefix)
+    const tldWithDot = tld.startsWith('.') ? tld : '.' + tld;
+    const tldPricing = await db.tldPricing.findFirst({
+      where: {
+        OR: [
+          { tld: tldWithDot },
+          { tld: tld },
+        ]
+      }
     });
 
-    const pricingMap = new Map(allPricing.map(p => [p.tld, p]));
+    // Determine availability
+    let available = false;
+    let availabilitySource = 'unknown';
 
-    // Check availability via RDAP for the requested domain
-    let mainAvailability = { available: false, source: 'unknown' };
-    if (!existingDomain) {
-      mainAvailability = await checkRdapAvailability(domainLower, tld);
+    if (existingDomain) {
+      available = false;
+      availabilitySource = 'local_db';
+    } else if (isFreeTld) {
+      // Free TLDs are always available if not already registered
+      available = true;
+      availabilitySource = 'local_db';
+    } else {
+      // Check RDAP for paid domains
+      const rdapResult = await checkRdapAvailability(domainLower, tld);
+      available = rdapResult.available;
+      availabilitySource = rdapResult.source;
     }
 
-    // Build results for multiple TLDs
-    const results: Record<string, any> = {};
-    for (const currentTld of Array.from(tldsToCheck)) {
-      const currentDomain = `${sld}${currentTld}`;
-      const existing = currentTld === `.${tld}` ? existingDomain : 
-        await db.domain.findUnique({ where: { name: currentDomain } }).catch(() => null);
-      
-      const pricing = pricingMap.get(currentTld);
-      
-      let available = false;
-      let availabilitySource = 'unknown';
-      
-      if (existing) {
-        available = false;
-        availabilitySource = 'local_db';
-      } else if (currentTld === `.${tld}`) {
-        available = mainAvailability.available;
-        availabilitySource = mainAvailability.source;
-      } else {
-        const rdapResult = await checkRdapAvailability(currentDomain, currentTld.slice(1));
-        available = rdapResult.available;
-        availabilitySource = rdapResult.source;
-      }
+    // Calculate price
+    const registerPrice = tldPricing?.promo && tldPricing.promoPrice ? tldPricing.promoPrice : tldPricing?.registerPrice || 0;
+    const isFree = isFreeTld || (tldPricing?.isFree || false);
 
-      const registerPrice = pricing?.promo && pricing.promoPrice ? pricing.promoPrice : pricing?.registerPrice || 0;
-      const isFree = pricing?.isFree || false;
+    // Get alternative TLD prices for suggestions
+    const altTlds = ['.com', '.net', '.org', '.io', '.xyz', '.dev', '.app', '.online', '.store', '.site'];
+    const altPricing = await db.tldPricing.findMany({
+      where: { tld: { in: altTlds } },
+    });
 
-      results[currentTld] = {
-        domain: currentDomain,
-        available,
-        availabilitySource,
-        pricing: pricing ? {
-          registerPrice,
-          renewPrice: pricing.renewPrice,
-          transferPrice: pricing.transferPrice,
-          isFree,
-          promo: pricing.promo,
-          promoPrice: pricing.promoPrice,
-          category: pricing.category,
-        } : null,
+    const alternatives = altPricing.map(p => {
+      const altDomain = `${sld}${p.tld}`;
+      const altIsFree = p.isFree || false;
+      const altPrice = p.promo && p.promoPrice ? p.promoPrice : p.registerPrice;
+      return {
+        domain: altDomain,
+        available: altIsFree ? true : false, // We don't check RDAP for all alternatives to save time
+        price: altIsFree ? 0 : altPrice,
+        isFree: altIsFree,
+        pricing: {
+          registerPrice: p.registerPrice,
+          renewPrice: p.renewPrice,
+          isFree: p.isFree,
+          promo: p.promo,
+          promoPrice: p.promoPrice,
+          category: p.category,
+        },
       };
-    }
+    });
 
+    // Return frontend-friendly format
     return NextResponse.json({
-      query: domainLower,
+      domain: domainLower,
+      available,
+      price: isFree ? 0 : registerPrice,
+      isFree,
+      availabilitySource,
+      pricing: tldPricing ? {
+        registerPrice,
+        renewPrice: tldPricing.renewPrice,
+        transferPrice: tldPricing.transferPrice,
+        isFree,
+        promo: tldPricing.promo,
+        promoPrice: tldPricing.promoPrice,
+        category: tldPricing.category,
+      } : null,
+      alternatives,
       sld,
-      tld: `.${tld}`,
-      primaryResult: results[`.${tld}`],
-      alternatives: results,
+      tld: '.' + tld,
     });
   } catch (error: any) {
     console.error('Domain check error:', error);

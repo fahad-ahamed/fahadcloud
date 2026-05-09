@@ -62,3 +62,15 @@ uploads/
 *.bak
 *.bak2
 src.bak.*/
+# Build
+.next/
+db/*.db
+db/*.db-journal
+node_modules/
+
+# Test files
+test-*.js
+update-build.sh
+
+# PM2
+.pm2/

@@ -28,7 +28,7 @@ export default function EmailVerificationDialog({
 }: EmailVerificationDialogProps) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="bg-white border-slate-200 text-slate-900">
+      <DialogContent className="bg-white border-slate-200 text-slate-900 max-h-[85vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Mail className="w-5 h-5 text-emerald-600" />
@@ -46,10 +46,14 @@ export default function EmailVerificationDialog({
           </div>
           <div>
             <Label className="text-slate-600">Verification Code</Label>
-            <Input className="bg-white border-slate-300 text-slate-900 text-center text-2xl tracking-[0.5em] font-mono"
+            <Input className="bg-white border-slate-300 text-slate-900 text-center text-xl sm:text-2xl tracking-[0.3em] sm:tracking-[0.5em] font-mono"
               value={regOtp} onChange={e => setRegOtp(e.target.value.replace(/\D/g, '').slice(0, 6))}
               placeholder="000000" maxLength={6} onKeyDown={e => e.key === 'Enter' && onVerify()} autoFocus />
             <p className="text-xs text-slate-400 mt-1 text-center">6-digit code expires in 10 minutes</p>
+            <div className="bg-amber-50 border border-amber-200 rounded-lg p-2 text-xs text-amber-700 flex items-center gap-1.5">
+              <span>⚠️</span>
+              <span>Check your <b>Spam/Junk</b> folder if you don not see the email in your inbox.</span>
+            </div>
           </div>
           <Button className="w-full bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700" onClick={onVerify} disabled={regVerifyLoading}>
             {regVerifyLoading ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Verifying...</> : <><Check className="w-4 h-4 mr-2" /> Verify Email</>}

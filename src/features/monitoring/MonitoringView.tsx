@@ -31,14 +31,14 @@ export default function MonitoringView({
   monData, monLoading, onRefresh,
 }: MonitoringViewProps) {
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 animate-fade-in">
       {monLoading && !monData && (
         <div className="flex items-center justify-center py-12">
           <Loader2 className="w-8 h-8 animate-spin text-emerald-600 mr-3" />
           <span className="text-slate-500">Loading monitoring data...</span>
         </div>
       )}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-6">
         {monData ? (
           <>
             {renderGauge(monData.system?.cpu || 0, 'CPU Usage', '#10b981')}
@@ -57,7 +57,7 @@ export default function MonitoringView({
 
       {monData && (
         <>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <Card className="bg-white border-slate-200 shadow-sm">
               <CardHeader>
                 <CardTitle className="text-sm">System Info</CardTitle>
@@ -108,7 +108,7 @@ export default function MonitoringView({
         </>
       )}
 
-      <Button variant="outline" className="border-slate-300" onClick={onRefresh}>
+      <Button variant="outline" className="border-slate-300 w-full sm:w-auto" onClick={onRefresh}>
         <RefreshCw className="w-4 h-4 mr-2" />
         Refresh
       </Button>

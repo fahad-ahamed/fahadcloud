@@ -6,13 +6,15 @@ interface RateLimitEntry {
 const rateLimitStore = new Map<string, RateLimitEntry>();
 
 const LIMITS: Record<string, { maxRequests: number; windowMs: number }> = {
-  login: { maxRequests: 10, windowMs: 15 * 60 * 1000 },
-  register: { maxRequests: 3, windowMs: 60 * 60 * 1000 },
+  login: { maxRequests: 20, windowMs: 15 * 60 * 1000 },
+  register: { maxRequests: 10, windowMs: 60 * 60 * 1000 },
+  resend_verification: { maxRequests: 5, windowMs: 15 * 60 * 1000 },
+  password_reset: { maxRequests: 5, windowMs: 15 * 60 * 1000 },
   payment_submit: { maxRequests: 5, windowMs: 60 * 60 * 1000 },
-  domain_search: { maxRequests: 30, windowMs: 60 * 1000 },
+  domain_search: { maxRequests: 60, windowMs: 60 * 1000 },
   payment_verify: { maxRequests: 10, windowMs: 60 * 60 * 1000 },
   admin_action: { maxRequests: 100, windowMs: 60 * 60 * 1000 },
-  api_general: { maxRequests: 60, windowMs: 60 * 1000 },
+  api_general: { maxRequests: 120, windowMs: 60 * 1000 },
   file_upload: { maxRequests: 20, windowMs: 60 * 1000 },
 };
 
@@ -35,6 +37,11 @@ export function checkRateLimit(key: string, action: string): { allowed: boolean;
 
   entry.count++;
   return { allowed: true, remaining: limit.maxRequests - entry.count, resetIn: limit.windowMs - (now - entry.windowStart) };
+}
+
+export function resetRateLimit(key: string, action: string): void {
+  const storeKey = `${action}:${key}`;
+  rateLimitStore.delete(storeKey);
 }
 
 if (typeof setInterval !== 'undefined') {

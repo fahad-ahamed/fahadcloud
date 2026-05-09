@@ -17,6 +17,11 @@ export abstract class BaseRepository<T> {
   }
   
   async create(data: any): Promise<T> {
+    // If data already has Prisma structure (data key at top level), pass as-is
+    // Otherwise wrap in { data } for Prisma compatibility
+    if (data && typeof data === 'object' && 'data' in data && Object.keys(data).length <= 2) {
+      return this.model.create(data);
+    }
     return this.model.create({ data });
   }
   

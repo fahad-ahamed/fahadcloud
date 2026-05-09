@@ -38,8 +38,8 @@ export default function TerminalView({
             <Badge className="bg-emerald-100 text-emerald-700 border-emerald-200 ml-auto text-[10px]">AI-Sandboxed</Badge>
           </div>
         </CardHeader>
-        <CardContent className="p-4 font-mono text-sm">
-          <div className="h-80 overflow-y-auto space-y-2 mb-4">
+        <CardContent className="p-3 sm:p-4 font-mono text-xs sm:text-sm">
+          <div className="h-56 sm:h-64 md:h-80 overflow-y-auto space-y-2 mb-4">
             <div className="text-green-400">Welcome to FahadCloud AI Terminal v2.0</div>
             <div className="text-slate-400">All commands are executed in a sandboxed environment.</div>
             <div className="text-slate-400">Dangerous commands are automatically blocked.</div>

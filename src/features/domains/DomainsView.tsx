@@ -24,19 +24,19 @@ export default function DomainsView({
   onDomainSearch, onRegisterDomain,
 }: DomainsViewProps) {
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 animate-fade-in">
       <Card className="bg-gradient-to-r from-emerald-50 to-teal-50 border-emerald-500/20">
         <CardContent className="p-6">
-          <h2 className="text-2xl font-bold mb-4">Find Your Perfect Domain</h2>
-          <div className="flex gap-3">
+          <h2 className="text-xl sm:text-2xl font-bold mb-4">Find Your Perfect Domain</h2>
+          <div className="flex flex-col sm:flex-row gap-3">
             <Input
-              className="flex-1 bg-white border-slate-300 text-slate-900 text-lg h-12"
+              className="flex-1 bg-white border-slate-200 text-slate-900 text-base sm:text-lg h-12 focus:border-emerald-400 focus:ring-2 focus:ring-emerald-500/20"
               placeholder="Search for a domain... (e.g., mysite.com)"
               value={searchDomain}
               onChange={e => setSearchDomain(e.target.value)}
               onKeyDown={e => e.key === 'Enter' && onDomainSearch()}
             />
-            <Button className="bg-gradient-to-r from-emerald-500 to-teal-600 h-12 px-8" onClick={onDomainSearch} disabled={searching}>
+            <Button className="bg-gradient-to-r from-emerald-500 to-teal-600 h-12 px-8 sm:px-8 w-full sm:w-auto" onClick={onDomainSearch} disabled={searching}>
               {searching ? <Loader2 className="w-5 h-5 animate-spin" /> : <Search className="w-5 h-5" />}
             </Button>
           </div>
@@ -108,12 +108,12 @@ export default function DomainsView({
           </CardHeader>
           <CardContent className="space-y-2">
             {domains.map(d => (
-              <div key={d.id} className="flex items-center justify-between p-4 bg-slate-50 rounded-xl">
-                <div>
-                  <div className="font-medium">{d.name}</div>
+              <div key={d.id} className="flex items-center justify-between p-3 sm:p-4 bg-slate-50 rounded-xl gap-2">
+                <div className="min-w-0">
+                  <div className="font-medium truncate">{d.name}</div>
                   <div className="text-xs text-slate-500">Expires: {new Date(d.expiresAt).toLocaleDateString()}</div>
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 shrink-0">
                   <Badge className={statusColor(d.status)}>{d.status}</Badge>
                   {d.sslEnabled && <Lock className="w-4 h-4 text-emerald-500" />}
                 </div>

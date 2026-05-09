@@ -21,6 +21,7 @@ export class MasterOrchestrator {
 
   constructor() {
     // Initialize agent busy counts
+    // Initialize agent busy counts including auto_learning
     Object.keys(AGENT_DEFINITIONS).forEach(id => {
       this.agentBusyCount.set(id as AgentId, 0);
     });

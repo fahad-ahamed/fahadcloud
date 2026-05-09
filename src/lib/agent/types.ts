@@ -1,10 +1,12 @@
 // ============ MULTI-AGENT TYPES & DEFINITIONS ============
-// FahadCloud Advanced Autonomous Multi-Agent Cloud Intelligence System
+// FahadCloud Advanced Autonomous Multi-Agent Cloud Intelligence System v2.0
+// 14 Specialized AI Agents with Auto Learning
 
 export type AgentId = 
   | 'devops' | 'security' | 'deployment' | 'monitoring' 
   | 'debugging' | 'infrastructure' | 'database' | 'optimization'
-  | 'recovery' | 'scaling' | 'dns_domain' | 'payment' | 'supervisor';
+  | 'recovery' | 'scaling' | 'dns_domain' | 'payment' | 'supervisor'
+  | 'auto_learning';
 
 export interface AgentDefinition {
   id: AgentId;
@@ -14,24 +16,28 @@ export interface AgentDefinition {
   specializations: string[];
   riskLevel: 'low' | 'medium' | 'high' | 'critical';
   canAutoExecute: boolean;
-  requiresApproval: string[];  // action types that require approval
+  requiresApproval: string[];
   cooldownMs: number;
   maxConcurrentTasks: number;
   icon: string;
   color: string;
+  version: string;
+  intelligenceLevel: number; // 1-10
+  learningEnabled: boolean;
 }
 
 export const AGENT_DEFINITIONS: Record<AgentId, AgentDefinition> = {
   devops: {
     id: 'devops',
     name: 'DevOps Agent',
-    description: 'Manages CI/CD pipelines, build processes, deployment workflows, and DevOps automation.',
+    description: 'Manages CI/CD pipelines, build processes, deployment workflows, and DevOps automation with intelligent rollback capabilities.',
     capabilities: [
       'ci_cd_pipeline_management', 'build_optimization', 'deployment_automation',
       'environment_configuration', 'release_management', 'rollback_execution',
       'artifact_management', 'dependency_management', 'container_orchestration',
+      'multi_environment_deploy', 'blue_green_deployment', 'canary_release',
     ],
-    specializations: ['react', 'nextjs', 'vue', 'nodejs', 'python', 'php', 'laravel', 'wordpress', 'docker'],
+    specializations: ['react', 'nextjs', 'vue', 'nodejs', 'python', 'php', 'laravel', 'wordpress', 'docker', 'kubernetes'],
     riskLevel: 'medium',
     canAutoExecute: true,
     requiresApproval: ['production_deploy', 'database_migration', 'config_change'],
@@ -39,18 +45,22 @@ export const AGENT_DEFINITIONS: Record<AgentId, AgentDefinition> = {
     maxConcurrentTasks: 5,
     icon: 'Rocket',
     color: 'from-orange-500 to-red-500',
+    version: '2.0',
+    intelligenceLevel: 9,
+    learningEnabled: true,
   },
   security: {
     id: 'security',
     name: 'Security Agent',
-    description: 'Autonomous security monitoring, threat detection, intrusion prevention, and vulnerability scanning.',
+    description: 'Autonomous security monitoring, threat detection, intrusion prevention, vulnerability scanning, and compliance enforcement.',
     capabilities: [
       'threat_detection', 'intrusion_prevention', 'vulnerability_scanning',
       'malware_scanning', 'firewall_optimization', 'ssl_management',
       'access_control', 'audit_logging', 'behavioral_anomaly_detection',
       'exploit_prevention', 'secret_rotation', 'compliance_checking',
+      'zero_day_detection', 'rate_limit_enforcement', 'ip_reputation_check',
     ],
-    specializations: ['network_security', 'application_security', 'infrastructure_security', 'compliance'],
+    specializations: ['network_security', 'application_security', 'infrastructure_security', 'compliance', 'owasp'],
     riskLevel: 'high',
     canAutoExecute: true,
     requiresApproval: ['block_ip', 'disable_service', 'quarantine_resource'],
@@ -58,256 +68,395 @@ export const AGENT_DEFINITIONS: Record<AgentId, AgentDefinition> = {
     maxConcurrentTasks: 10,
     icon: 'Shield',
     color: 'from-red-500 to-red-700',
+    version: '2.0',
+    intelligenceLevel: 10,
+    learningEnabled: true,
   },
   deployment: {
     id: 'deployment',
     name: 'Deployment Agent',
-    description: 'Handles one-click deployments, framework detection, build optimization, and deployment verification.',
+    description: 'Handles one-click deployments, framework detection, build optimization, and deployment verification with zero-downtime guarantees.',
     capabilities: [
       'framework_detection', 'build_execution', 'deployment_verification',
       'rollback_management', 'blue_green_deploy', 'canary_deploy',
       'static_site_deploy', 'container_deploy', 'ssl_provisioning',
       'github_sync', 'environment_setup', 'dependency_installation',
+      'auto_scaling_config', 'health_check_verification',
     ],
-    specializations: ['react', 'nextjs', 'nuxt', 'vue', 'nodejs', 'python', 'laravel', 'wordpress', 'docker', 'static'],
+    specializations: ['react', 'nextjs', 'nuxt', 'vue', 'nodejs', 'python', 'php', 'docker', 'static'],
     riskLevel: 'medium',
     canAutoExecute: true,
-    requiresApproval: ['production_deploy', 'rollback', 'database_migration'],
+    requiresApproval: ['production_deploy', 'database_migration'],
     cooldownMs: 3000,
-    maxConcurrentTasks: 3,
+    maxConcurrentTasks: 8,
     icon: 'Rocket',
-    color: 'from-emerald-500 to-teal-500',
+    color: 'from-orange-500 to-amber-500',
+    version: '2.0',
+    intelligenceLevel: 9,
+    learningEnabled: true,
   },
   monitoring: {
     id: 'monitoring',
     name: 'Monitoring Agent',
-    description: 'Real-time system health monitoring, metric collection, anomaly detection, and alerting.',
+    description: '24/7 real-time monitoring with intelligent alerting, anomaly detection, predictive scaling, and comprehensive health scoring.',
     capabilities: [
-      'system_metrics', 'application_health', 'uptime_monitoring',
-      'performance_analysis', 'alert_management', 'log_aggregation',
-      'anomaly_detection', 'capacity_planning', 'sla_monitoring',
-      'custom_dashboards', 'real_time_streaming', 'predictive_alerts',
+      'system_metrics_collection', 'application_health_monitoring', 'alert_management',
+      'anomaly_detection', 'performance_profiling', 'resource_tracking',
+      'log_aggregation', 'uptime_monitoring', 'capacity_planning',
+      'predictive_scaling', 'custom_dashboards', 'incident_correlation',
     ],
-    specializations: ['server_monitoring', 'application_monitoring', 'network_monitoring', 'business_metrics'],
+    specializations: ['cpu_monitoring', 'memory_monitoring', 'disk_monitoring', 'network_monitoring', 'application_monitoring'],
     riskLevel: 'low',
     canAutoExecute: true,
     requiresApproval: [],
     cooldownMs: 1000,
     maxConcurrentTasks: 20,
     icon: 'Monitor',
-    color: 'from-blue-500 to-cyan-500',
+    color: 'from-yellow-500 to-orange-500',
+    version: '2.0',
+    intelligenceLevel: 8,
+    learningEnabled: true,
   },
   debugging: {
     id: 'debugging',
     name: 'Debugging Agent',
-    description: 'Autonomous problem diagnosis, root cause analysis, error resolution, and log analysis.',
+    description: 'Intelligent error analysis, root cause identification, automated debugging, and fix suggestion with context-aware reasoning.',
     capabilities: [
-      'error_analysis', 'root_cause_analysis', 'log_analysis',
-      'performance_profiling', 'crash_diagnosis', 'dependency_conflict_resolution',
-      'configuration_debugging', 'network_debugging', 'database_debugging',
-      'automated_fix_suggestion', 'stack_trace_analysis', 'memory_leak_detection',
+      'error_analysis', 'root_cause_identification', 'log_analysis',
+      'stack_trace_analysis', 'performance_debugging', 'memory_leak_detection',
+      'automated_fix_suggestion', 'regression_testing', 'test_generation',
+      'code_review', 'dependency_conflict_resolution',
     ],
-    specializations: ['javascript', 'python', 'php', 'database', 'network', 'system'],
-    riskLevel: 'medium',
+    specializations: ['javascript', 'typescript', 'python', 'php', 'nodejs', 'database_errors', 'network_errors'],
+    riskLevel: 'low',
     canAutoExecute: true,
-    requiresApproval: ['apply_fix', 'restart_service', 'modify_config'],
+    requiresApproval: ['apply_fix', 'code_change'],
     cooldownMs: 3000,
-    maxConcurrentTasks: 5,
-    icon: 'Bug',
-    color: 'from-amber-500 to-orange-500',
+    maxConcurrentTasks: 8,
+    icon: 'AlertTriangle',
+    color: 'from-amber-500 to-yellow-500',
+    version: '2.0',
+    intelligenceLevel: 9,
+    learningEnabled: true,
   },
   infrastructure: {
     id: 'infrastructure',
     name: 'Infrastructure Agent',
-    description: 'Manages servers, containers, networking, storage, and infrastructure-as-code generation.',
+    description: 'Docker/K8s orchestration, server provisioning, cluster management, and infrastructure-as-code generation.',
     capabilities: [
-      'server_provisioning', 'container_management', 'network_configuration',
-      'storage_management', 'infrastructure_as_code', 'environment_replication',
-      'cluster_management', 'edge_deployment', 'reverse_proxy',
-      'load_balancing', 'dns_routing', 'cdn_configuration',
+      'docker_management', 'kubernetes_orchestration', 'server_provisioning',
+      'cluster_management', 'network_configuration', 'iac_generation',
+      'container_scaling', 'resource_optimization', 'volume_management',
+      'load_balancing', 'cdn_configuration', 'environment_replication',
     ],
-    specializations: ['docker', 'kubernetes', 'nginx', 'networking', 'storage', 'compute'],
+    specializations: ['docker', 'kubernetes', 'aws', 'nginx', 'networking', 'storage'],
     riskLevel: 'high',
-    canAutoExecute: false,
-    requiresApproval: ['create_server', 'destroy_server', 'network_change', 'storage_resize'],
-    cooldownMs: 10000,
-    maxConcurrentTasks: 2,
+    canAutoExecute: true,
+    requiresApproval: ['server_restart', 'container_recreate', 'network_change'],
+    cooldownMs: 5000,
+    maxConcurrentTasks: 5,
     icon: 'Server',
-    color: 'from-purple-500 to-indigo-500',
+    color: 'from-gray-500 to-gray-700',
+    version: '2.0',
+    intelligenceLevel: 9,
+    learningEnabled: true,
   },
   database: {
     id: 'database',
     name: 'Database Agent',
-    description: 'Database creation, migration, optimization, backup, and intelligent query analysis.',
+    description: 'Intelligent database creation, migration, backup, query optimization, and performance tuning across all database types.',
     capabilities: [
-      'database_creation', 'migration_management', 'query_optimization',
-      'backup_verification', 'replication_setup', 'schema_analysis',
-      'index_optimization', 'connection_pooling', 'data_integrity',
-      'performance_tuning', 'automated_backups', 'point_in_time_recovery',
+      'database_creation', 'schema_migration', 'backup_management',
+      'query_optimization', 'index_management', 'replication_setup',
+      'connection_pooling', 'data_integrity_check', 'performance_tuning',
+      'migration_planning', ' disaster_recovery', 'multi_db_support',
     ],
-    specializations: ['sqlite', 'mysql', 'postgresql', 'mongodb', 'redis'],
+    specializations: ['mysql', 'postgresql', 'sqlite', 'mongodb', 'redis'],
     riskLevel: 'high',
     canAutoExecute: true,
     requiresApproval: ['drop_database', 'schema_migration', 'data_deletion'],
     cooldownMs: 5000,
     maxConcurrentTasks: 3,
     icon: 'Database',
-    color: 'from-teal-500 to-cyan-500',
+    color: 'from-cyan-500 to-blue-500',
+    version: '2.0',
+    intelligenceLevel: 9,
+    learningEnabled: true,
   },
   optimization: {
     id: 'optimization',
     name: 'Optimization Agent',
-    description: 'Performance optimization, caching, compression, CDN management, and intelligent tuning.',
+    description: 'Performance profiling, resource right-sizing, cost optimization, and intelligent auto-scaling with predictive analysis.',
     capabilities: [
-      'performance_profiling', 'cache_optimization', 'compression_optimization',
-      'cdn_optimization', 'image_optimization', 'code_splitting',
-      'lazy_loading', 'bundle_analysis', 'server_tuning',
-      'database_optimization', 'network_optimization', 'resource_right_sizing',
+      'performance_profiling', 'resource_rightsizing', 'cost_optimization',
+      'auto_scaling_recommendations', 'caching_optimization', 'cdn_optimization',
+      'code_splitting', 'image_optimization', 'bundle_analysis',
+      'database_query_optimization', 'load_time_optimization', 'green_computing',
     ],
-    specializations: ['frontend', 'backend', 'database', 'network', 'system'],
+    specializations: ['frontend_performance', 'backend_performance', 'database_optimization', 'cost_optimization'],
     riskLevel: 'medium',
     canAutoExecute: true,
-    requiresApproval: ['production_change', 'cache_invalidation', 'config_tuning'],
-    cooldownMs: 5000,
+    requiresApproval: ['apply_optimization', 'scale_resources'],
+    cooldownMs: 10000,
     maxConcurrentTasks: 5,
-    icon: 'Zap',
-    color: 'from-yellow-500 to-amber-500',
+    icon: 'TrendingUp',
+    color: 'from-pink-500 to-rose-500',
+    version: '2.0',
+    intelligenceLevel: 8,
+    learningEnabled: true,
   },
   recovery: {
     id: 'recovery',
     name: 'Recovery Agent',
-    description: 'Automatic crash recovery, service restart, backup restoration, and self-healing infrastructure.',
+    description: 'Automated backup management, point-in-time recovery, disaster recovery orchestration, and data integrity verification.',
     capabilities: [
-      'crash_recovery', 'service_restart', 'backup_restoration',
-      'failover_execution', 'data_recovery', 'configuration_recovery',
-      'health_restoration', 'cascade_failure_prevention', 'disaster_recovery',
-      'automated_remediation', 'state_reconstruction', 'partial_recovery',
+      'automated_backup', 'point_in_time_recovery', 'disaster_recovery',
+      'data_integrity_verification', 'backup_scheduling', 'restore_testing',
+      'cross_region_replication', 'incremental_backup', 'snapshot_management',
+      'recovery_orchestration', 'backup_compliance',
     ],
-    specializations: ['service_recovery', 'data_recovery', 'infrastructure_recovery', 'application_recovery'],
+    specializations: ['full_backup', 'incremental_backup', 'snapshot', 'disaster_recovery'],
     riskLevel: 'high',
     canAutoExecute: true,
-    requiresApproval: ['full_restore', 'failover_switch', 'data_overwrite'],
-    cooldownMs: 3000,
-    maxConcurrentTasks: 5,
+    requiresApproval: ['restore_database', 'delete_backup'],
+    cooldownMs: 10000,
+    maxConcurrentTasks: 3,
     icon: 'RotateCcw',
-    color: 'from-green-500 to-emerald-500',
+    color: 'from-teal-500 to-cyan-500',
+    version: '2.0',
+    intelligenceLevel: 9,
+    learningEnabled: true,
   },
   scaling: {
     id: 'scaling',
     name: 'Scaling Agent',
-    description: 'Auto-scaling, load balancing, resource allocation, and traffic management.',
+    description: 'Auto-scaling management, load distribution, capacity planning, and intelligent resource provisioning based on demand patterns.',
     capabilities: [
-      'horizontal_scaling', 'vertical_scaling', 'load_balancing',
-      'traffic_management', 'resource_allocation', 'capacity_forecasting',
-      'auto_scaling_groups', 'container_scaling', 'database_scaling',
-      'cdn_scaling', 'queue_scaling', 'cost_optimization',
+      'horizontal_scaling', 'vertical_scaling', 'auto_scaling_configuration',
+      'load_distribution', 'capacity_planning', 'demand_prediction',
+      'resource_provisioning', 'cluster_expansion', 'traffic_management',
+      'cost_efficient_scaling', 'multi_region_scaling',
     ],
-    specializations: ['compute_scaling', 'database_scaling', 'storage_scaling', 'network_scaling'],
-    riskLevel: 'high',
+    specializations: ['horizontal_scaling', 'vertical_scaling', 'auto_scaling', 'multi_region'],
+    riskLevel: 'medium',
     canAutoExecute: true,
-    requiresApproval: ['scale_up', 'scale_down', 'resource_change'],
+    requiresApproval: ['scale_up', 'scale_down', 'region_expansion'],
     cooldownMs: 15000,
     maxConcurrentTasks: 3,
-    icon: 'TrendingUp',
-    color: 'from-indigo-500 to-purple-500',
+    icon: 'Zap',
+    color: 'from-yellow-400 to-amber-500',
+    version: '2.0',
+    intelligenceLevel: 8,
+    learningEnabled: true,
   },
   dns_domain: {
     id: 'dns_domain',
-    name: 'DNS/Domain Agent',
-    description: 'Domain registration, DNS management, WHOIS privacy, and intelligent DNS routing.',
+    name: 'DNS Agent',
+    description: 'Automatic DNS configuration, zone management, record optimization, and propagation verification across all domains.',
     capabilities: [
-      'domain_search', 'domain_registration', 'dns_record_management',
-      'nameserver_configuration', 'whois_privacy', 'domain_transfer',
-      'dns_propagation_check', 'geo_dns', 'failover_dns',
-      'ssl_certificate_binding', 'domain_renewal', 'subdomain_management',
+      'dns_zone_management', 'record_management', 'propagation_verification',
+      'dns_optimization', 'domain_registration', 'nameserver_configuration',
+      'dns_security', 'dns_monitoring', 'record_migration',
+      'bulk_dns_operations', 'dns_troubleshooting',
     ],
-    specializations: ['domain_registration', 'dns_management', 'ssl_management', 'whois'],
+    specializations: ['a_record', 'cname', 'mx_record', 'txt_record', 'srv_record', 'ns_record'],
     riskLevel: 'medium',
     canAutoExecute: true,
-    requiresApproval: ['domain_purchase', 'dns_change', 'nameserver_change'],
-    cooldownMs: 3000,
-    maxConcurrentTasks: 5,
+    requiresApproval: ['delete_zone', 'change_nameservers'],
+    cooldownMs: 5000,
+    maxConcurrentTasks: 10,
     icon: 'Globe',
-    color: 'from-emerald-500 to-green-500',
+    color: 'from-sky-500 to-blue-500',
+    version: '2.0',
+    intelligenceLevel: 8,
+    learningEnabled: true,
   },
   payment: {
     id: 'payment',
-    name: 'Payment Verification Agent',
-    description: 'bKash payment processing, fraud detection, TRX verification, and billing intelligence.',
+    name: 'Payment Agent',
+    description: 'Payment processing, bKash integration, transaction verification, invoicing, and financial reporting.',
     capabilities: [
-      'payment_verification', 'fraud_detection', 'trx_validation',
-      'duplicate_detection', 'billing_management', 'invoice_generation',
-      'refund_processing', 'payment_analytics', 'revenue_tracking',
-      'subscription_management', 'payment_reconciliation', 'compliance_reporting',
+      'payment_processing', 'transaction_verification', 'invoice_generation',
+      'refund_management', 'financial_reporting', 'fraud_detection',
+      'subscription_management', 'payment_reminder', 'revenue_analytics',
     ],
-    specializations: ['bkash', 'fraud_detection', 'billing', 'compliance'],
+    specializations: ['bkash', 'nagad', 'rocket', 'card_payment', 'bank_transfer'],
     riskLevel: 'high',
     canAutoExecute: true,
-    requiresApproval: ['approve_payment', 'reject_payment', 'process_refund'],
-    cooldownMs: 2000,
-    maxConcurrentTasks: 10,
+    requiresApproval: ['refund', 'cancel_subscription', 'waive_fee'],
+    cooldownMs: 5000,
+    maxConcurrentTasks: 5,
     icon: 'CreditCard',
-    color: 'from-pink-500 to-rose-500',
+    color: 'from-green-500 to-emerald-500',
+    version: '2.0',
+    intelligenceLevel: 8,
+    learningEnabled: true,
   },
   supervisor: {
     id: 'supervisor',
-    name: 'AI Supervisor Agent',
-    description: 'Master orchestrator that coordinates all sub-agents, resolves conflicts, and ensures system coherence.',
+    name: 'Orchestrator Agent',
+    description: 'Master coordination engine that delegates tasks to specialized agents, manages workflows, and ensures optimal resource allocation.',
     capabilities: [
-      'task_delegation', 'conflict_resolution', 'priority_management',
-      'workflow_orchestration', 'agent_coordination', 'resource_allocation',
-      'decision_making', 'escalation_handling', 'system_wide_optimization',
-      'cross_agent_communication', 'task_dependency_management', 'global_policy_enforcement',
+      'task_delegation', 'workflow_orchestration', 'agent_coordination',
+      'conflict_resolution', 'priority_management', 'resource_allocation',
+      'progress_tracking', 'decision_making', 'escalation_handling',
+      'quality_assurance', 'performance_optimization', 'agent_training',
     ],
-    specializations: ['orchestration', 'coordination', 'decision_making', 'policy'],
-    riskLevel: 'critical',
+    specializations: ['orchestration', 'coordination', 'planning', 'decision_making'],
+    riskLevel: 'low',
     canAutoExecute: true,
-    requiresApproval: ['critical_operation', 'system_wide_change', 'emergency_action'],
+    requiresApproval: ['emergency_shutdown', 'agent_override'],
     cooldownMs: 1000,
-    maxConcurrentTasks: 20,
-    icon: 'Brain',
-    color: 'from-violet-500 to-purple-600',
+    maxConcurrentTasks: 50,
+    icon: 'Cpu',
+    color: 'from-purple-500 to-indigo-500',
+    version: '2.0',
+    intelligenceLevel: 10,
+    learningEnabled: true,
+  },
+  auto_learning: {
+    id: 'auto_learning',
+    name: 'Auto Learning Agent',
+    description: 'Continuously trains and improves all FahadCloud AI agents using project data, user interactions, system metrics, and cross-domain insights. Unlimited, scalable, autonomous learning engine.',
+    capabilities: [
+      'continuous_training', 'cross_agent_learning', 'pattern_recognition',
+      'auto_optimization', 'knowledge_graph_construction', 'predictive_modeling',
+      'data_aggregation', 'insight_extraction', 'model_fine_tuning',
+      'feedback_loop_integration', 'adaptive_behavior', 'skill_transfer',
+      'performance_tracking', 'self_improvement', 'knowledge_synthesis',
+    ],
+    specializations: ['machine_learning', 'deep_learning', 'reinforcement_learning', 'nlp', 'knowledge_graphs', 'transfer_learning'],
+    riskLevel: 'low',
+    canAutoExecute: true,
+    requiresApproval: ['reset_models', 'delete_training_data'],
+    cooldownMs: 500,
+    maxConcurrentTasks: 100,
+    icon: 'GraduationCap',
+    color: 'from-violet-600 to-fuchsia-500',
+    version: '1.0',
+    intelligenceLevel: 10,
+    learningEnabled: true,
   },
 };
 
-// ============ AGENT MESSAGE TYPES ============
+// ============ HELPER FUNCTIONS ============
+
+export function getAgentForIntent(intent: string): AgentId {
+  const intentMap: Record<string, AgentId> = {
+    domain_check: 'dns_domain', domain_register: 'dns_domain', domain_manage: 'dns_domain',
+    hosting_deploy: 'deployment', hosting_manage: 'infrastructure', hosting_configure: 'devops',
+    ssl_install: 'security', ssl_manage: 'security',
+    dns_configure: 'dns_domain', dns_manage: 'dns_domain',
+    database_create: 'database', database_manage: 'database',
+    storage_upload: 'infrastructure', storage_manage: 'infrastructure',
+    shell_execute: 'debugging',
+    monitoring_check: 'monitoring', monitoring_setup: 'monitoring',
+    payment_check: 'payment', payment_verify: 'payment',
+    optimization: 'optimization',
+    troubleshoot: 'debugging',
+    general_help: 'supervisor',
+    greeting: 'supervisor',
+    unknown: 'supervisor',
+  };
+  return intentMap[intent] || 'supervisor';
+}
+
+export function getAgentsForComplexTask(intent: string): AgentId[] {
+  const complexTaskMap: Record<string, AgentId[]> = {
+    domain_register: ['dns_domain', 'security', 'payment'],
+    hosting_deploy: ['deployment', 'devops', 'infrastructure', 'security', 'monitoring'],
+    ssl_install: ['security', 'infrastructure', 'dns_domain'],
+    database_create: ['database', 'recovery', 'monitoring'],
+    troubleshoot: ['debugging', 'monitoring', 'security'],
+    optimization: ['optimization', 'monitoring', 'infrastructure'],
+  };
+  return complexTaskMap[intent] || [getAgentForIntent(intent)];
+}
+
+export function generateId(prefix: string): string {
+  return `${prefix}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+}
+
+// ============ COMPLEX TYPES ============
+
+export interface LearningRecord {
+  id: string;
+  agentId: AgentId;
+  type: 'success' | 'failure' | 'optimization' | 'pattern' | 'insight';
+  context: Record<string, any>;
+  outcome: Record<string, any>;
+  score: number;
+  timestamp: Date;
+  appliedInProduction: boolean;
+}
+
+export interface Prediction {
+  id: string;
+  agentId: AgentId;
+  type: string;
+  confidence: number;
+  timeframe: string;
+  details: Record<string, any>;
+  preventativeActions: string[];
+  createdAt: Date;
+}
 
 export interface AgentMessage {
   id: string;
   fromAgent: AgentId;
-  toAgent: AgentId | 'broadcast';
-  type: 'task_request' | 'task_result' | 'alert' | 'query' | 'command' | 'status_update' | 'collaboration_request';
-  payload: Record<string, any>;
-  priority: 'low' | 'medium' | 'high' | 'critical';
+  toAgent: AgentId | 'all';
+  type: 'task' | 'result' | 'query' | 'alert' | 'command';
+  content: string;
+  payload?: Record<string, any>;
   timestamp: Date;
-  requiresResponse: boolean;
-  correlationId?: string;
 }
 
 export interface AgentTaskRequest {
   id: string;
-  requestingAgent: AgentId;
-  targetAgent: AgentId;
-  action: string;
+  agentId: AgentId;
+  sessionId: string;
+  userId: string;
+  type: string;
+  description: string;
   input: Record<string, any>;
-  priority: 'low' | 'medium' | 'high' | 'critical';
+  riskLevel: 'low' | 'medium' | 'high' | 'critical';
   requiresApproval: boolean;
-  deadline?: Date;
-  retryCount: number;
-  maxRetries: number;
-  fallbackAgent?: AgentId;
-  fallbackAction?: string;
+  createdAt: Date;
 }
 
 export interface AgentTaskResult {
   taskId: string;
   agentId: AgentId;
   success: boolean;
-  output?: any;
+  output: any;
   error?: string;
   duration: number;
-  sideEffects?: string[];
-  followUpActions?: AgentTaskRequest[];
+  timestamp: Date;
+}
+
+export interface OrchestrationStep {
+  id: string;
+  order: number;
+  agentId: AgentId;
+  action: string;
+  description: string;
+  input: Record<string, any>;
+  status: 'pending' | 'running' | 'completed' | 'failed' | 'skipped';
+  riskLevel: 'low' | 'medium' | 'high' | 'critical';
+  requiresApproval: boolean;
+  result?: AgentTaskResult;
+}
+
+export interface OrchestrationPlan {
+  id: string;
+  sessionId: string;
+  userId: string;
+  intent: string;
+  steps: OrchestrationStep[];
+  riskLevel: 'low' | 'medium' | 'high' | 'critical';
+  approvalRequired: boolean;
+  status: 'planning' | 'pending_approval' | 'executing' | 'completed' | 'failed';
+  createdAt: Date;
 }
 
 export interface AgentCollaborationContext {
@@ -324,139 +473,64 @@ export interface AgentCollaborationContext {
 export interface AgentDecision {
   id: string;
   agentId: AgentId;
+  type: string;
   decision: string;
   reasoning: string;
   confidence: number;
-  alternatives: string[];
   timestamp: Date;
-  approved: boolean;
-  approvedBy?: string;
 }
 
 export interface AgentTimelineEntry {
+  id: string;
+  agentId: AgentId;
+  event: string;
+  details: Record<string, any>;
   timestamp: Date;
-  agentId: AgentId;
-  action: string;
-  status: 'started' | 'completed' | 'failed' | 'waiting';
-  details?: string;
 }
 
-// ============ ORCHESTRATION TYPES ============
+export interface ThoughtStep {
+  step: number;
+  type: 'observation' | 'analysis' | 'planning' | 'execution' | 'reflection';
+  content: string;
+  confidence: number;
+  agentId?: AgentId;
+}
 
-export interface OrchestrationPlan {
+export interface ReasoningChain {
   id: string;
-  originalRequest: string;
-  steps: OrchestrationStep[];
-  dependencies: Record<string, string[]>;  // stepId -> depends on stepIds
-  estimatedDuration: number;
-  riskLevel: 'low' | 'medium' | 'high' | 'critical';
-  requiredAgents: AgentId[];
-  approvalRequired: boolean;
-  rollbackPlan: OrchestrationStep[];
+  sessionId: string;
+  thoughts: ThoughtStep[];
+  conclusion: string;
+  confidence: number;
   createdAt: Date;
 }
-
-export interface OrchestrationStep {
-  id: string;
-  order: number;
-  agentId: AgentId;
-  action: string;
-  input: Record<string, any>;
-  description: string;
-  riskLevel: 'low' | 'medium' | 'high' | 'critical';
-  requiresApproval: boolean;
-  timeout: number;
-  retryCount: number;
-  maxRetries: number;
-  fallback?: {
-    agentId: AgentId;
-    action: string;
-    input: Record<string, any>;
-  };
-  condition?: {
-    field: string;
-    operator: 'eq' | 'neq' | 'gt' | 'lt' | 'contains';
-    value: any;
-  };
-  output?: any;
-  status: 'pending' | 'running' | 'completed' | 'failed' | 'skipped';
-  startedAt?: Date;
-  completedAt?: Date;
-  error?: string;
-}
-
-// ============ MEMORY TYPES ============
-
-export type MemoryType = 
-  | 'short_term' | 'long_term' | 'semantic' | 'workflow'
-  | 'infrastructure' | 'deployment' | 'security' | 'performance'
-  | 'error_solution' | 'user_preference' | 'project_context'
-  | 'agent_learning' | 'optimization_history';
-
-export interface MemoryEntry {
-  id: string;
-  type: MemoryType;
-  category: string;
-  key: string;
-  value: any;
-  embedding?: number[];
-  relevance: number;
-  accessCount: number;
-  createdAt: Date;
-  lastAccessed: Date;
-  expiresAt?: Date;
-  tags: string[];
-  source: AgentId;
-  connections: string[];  // IDs of related memories
-}
-
-export interface MemoryQuery {
-  types?: MemoryType[];
-  category?: string;
-  key?: string;
-  tags?: string[];
-  minRelevance?: number;
-  limit?: number;
-  timeRange?: { from: Date; to: Date };
-  semanticQuery?: string;
-}
-
-// ============ SECURITY TYPES ============
 
 export interface SecurityEvent {
   id: string;
-  type: 'intrusion_attempt' | 'malware_detected' | 'anomaly_detected' | 'vulnerability_found' 
-       | 'brute_force' | 'ddos' | 'suspicious_activity' | 'policy_violation' | 'data_breach_attempt';
-  severity: 'low' | 'medium' | 'high' | 'critical';
+  type: string;
+  severity: 'info' | 'warning' | 'critical';
   source: string;
-  target: string;
-  details: Record<string, any>;
+  description: string;
   timestamp: Date;
-  resolved: boolean;
-  resolvedBy?: AgentId;
-  resolution?: string;
-  autoRemediated: boolean;
+  handled: boolean;
 }
 
 export interface SecurityPolicy {
   id: string;
   name: string;
-  rules: SecurityRule[];
-  isActive: boolean;
   priority: number;
+  isActive: boolean;
+  rules: SecurityRule[];
 }
 
 export interface SecurityRule {
   id: string;
-  type: 'allow' | 'deny' | 'rate_limit' | 'alert' | 'block';
+  type: 'allow' | 'deny' | 'rate_limit';
   pattern: string;
   resource: string;
-  threshold?: number;
-  window?: number;  // time window in seconds
   action: string;
+  ttl?: number;
 }
-
-// ============ INFRASTRUCTURE TYPES ============
 
 export interface ContainerSpec {
   name: string;
@@ -464,144 +538,13 @@ export interface ContainerSpec {
   ports: number[];
   env: Record<string, string>;
   volumes: Record<string, string>;
-  cpuLimit?: string;
-  memoryLimit?: string;
-  replicas?: number;
-  healthCheck?: { path: string; interval: number; timeout: number };
 }
 
 export interface ClusterNode {
   id: string;
   name: string;
-  ip: string;
-  status: 'healthy' | 'warning' | 'critical' | 'offline';
+  status: 'online' | 'offline' | 'maintenance';
   cpu: number;
-  ram: number;
-  disk: number;
+  memory: number;
   containers: number;
-  region: string;
-  labels: Record<string, string>;
 }
-
-// ============ LEARNING TYPES ============
-
-export interface LearningRecord {
-  id: string;
-  agentId: AgentId;
-  type: 'success_pattern' | 'failure_pattern' | 'optimization_result' | 'performance_metric' | 'user_feedback';
-  context: Record<string, any>;
-  outcome: Record<string, any>;
-  score: number;  // -1.0 to 1.0
-  timestamp: Date;
-  appliedInProduction: boolean;
-}
-
-export interface Prediction {
-  id: string;
-  agentId: AgentId;
-  type: 'failure' | 'performance_degradation' | 'resource_exhaustion' | 'security_threat' | 'cost_anomaly';
-  confidence: number;
-  timeframe: string;
-  details: Record<string, any>;
-  preventativeActions: string[];
-  createdAt: Date;
-}
-
-// ============ ENTERPRISE TYPES ============
-
-export interface Tenant {
-  id: string;
-  name: string;
-  plan: 'starter' | 'pro' | 'enterprise';
-  resources: { cpu: number; ram: number; storage: number; bandwidth: number };
-  usage: { cpu: number; ram: number; storage: number; bandwidth: number };
-  sla: { uptime: number; responseTime: number; supportLevel: string };
-}
-
-export interface AuditLog {
-  id: string;
-  userId: string;
-  agentId: AgentId;
-  action: string;
-  resource: string;
-  details: Record<string, any>;
-  ipAddress: string;
-  timestamp: Date;
-  riskLevel: 'low' | 'medium' | 'high';
-}
-
-// ============ CHAIN OF THOUGHT ============
-
-export interface ThoughtStep {
-  step: number;
-  type: 'observation' | 'reasoning' | 'planning' | 'decision' | 'validation' | 'reflection';
-  content: string;
-  confidence: number;
-  agentId: AgentId;
-  timestamp: Date;
-  dependencies?: number[];  // step numbers this depends on
-}
-
-export interface ReasoningChain {
-  id: string;
-  sessionId: string;
-  originalQuery: string;
-  thoughts: ThoughtStep[];
-  conclusion: string;
-  totalConfidence: number;
-  agentsInvolved: AgentId[];
-  duration: number;
-  createdAt: Date;
-}
-
-// ============ HELPER FUNCTIONS ============
-
-export function getAgentForIntent(intent: string): AgentId {
-  const intentAgentMap: Record<string, AgentId> = {
-    'domain_check': 'dns_domain',
-    'domain_register': 'dns_domain',
-    'domain_manage': 'dns_domain',
-    'hosting_deploy': 'deployment',
-    'hosting_manage': 'devops',
-    'hosting_configure': 'devops',
-    'ssl_install': 'security',
-    'ssl_manage': 'security',
-    'dns_configure': 'dns_domain',
-    'dns_manage': 'dns_domain',
-    'database_create': 'database',
-    'database_manage': 'database',
-    'storage_upload': 'infrastructure',
-    'storage_manage': 'infrastructure',
-    'shell_execute': 'devops',
-    'monitoring_check': 'monitoring',
-    'monitoring_setup': 'monitoring',
-    'payment_check': 'payment',
-    'payment_verify': 'payment',
-    'optimization': 'optimization',
-    'troubleshoot': 'debugging',
-    'security_scan': 'security',
-    'scaling': 'scaling',
-    'recovery': 'recovery',
-    'general_help': 'supervisor',
-    'greeting': 'supervisor',
-  };
-  return intentAgentMap[intent] || 'supervisor';
-}
-
-export function getAgentsForComplexTask(taskType: string): AgentId[] {
-  const complexTaskMap: Record<string, AgentId[]> = {
-    'full_deployment': ['deployment', 'devops', 'dns_domain', 'security', 'monitoring'],
-    'production_migration': ['devops', 'database', 'deployment', 'recovery', 'monitoring'],
-    'security_incident': ['security', 'infrastructure', 'recovery', 'monitoring', 'supervisor'],
-    'performance_crisis': ['optimization', 'debugging', 'monitoring', 'scaling', 'infrastructure'],
-    'infrastructure_setup': ['infrastructure', 'devops', 'security', 'monitoring', 'scaling'],
-    'domain_full_setup': ['dns_domain', 'deployment', 'security', 'monitoring'],
-    'disaster_recovery': ['recovery', 'infrastructure', 'database', 'devops', 'security', 'supervisor'],
-  };
-  return complexTaskMap[taskType] || ['supervisor'];
-}
-
-export function generateId(prefix: string = 'id'): string {
-  return `${prefix}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-}
-

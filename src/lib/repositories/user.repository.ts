@@ -1,3 +1,4 @@
+
 import { db } from '@/lib/db';
 import { BaseRepository } from './base.repository';
 
@@ -36,8 +37,8 @@ export class UserRepository extends BaseRepository<any> {
     });
   }
 
-  async searchUsers(params: { search?: string; role?: string; page?: number; limit?: number }) {
-    const { search, role, page = 1, limit = 20 } = params;
+  async searchUsers(params: { search?: string; role?: string; status?: string; page?: number; limit?: number }) {
+    const { search, role, status, page = 1, limit = 20 } = params;
     const where: any = {};
     if (search) {
       where.OR = [
@@ -48,12 +49,21 @@ export class UserRepository extends BaseRepository<any> {
       ];
     }
     if (role) where.role = role;
+    // Support filtering by status (blocked/active)
+    if (status === 'blocked') {
+      where.role = 'blocked';
+    } else if (status === 'active') {
+      where.role = { in: ['customer', 'admin', 'moderator'] };
+    } else if (status === 'unverified') {
+      where.emailVerified = false;
+      where.role = { not: 'blocked' };
+    }
     return this.paginate({
       where,
       select: {
         id: true, email: true, firstName: true, lastName: true, company: true,
         phone: true, role: true, adminRole: true, balance: true, storageLimit: true,
-        storageUsed: true, lastLoginAt: true, loginIp: true, createdAt: true,
+        storageUsed: true, emailVerified: true, lastLoginAt: true, loginIp: true, createdAt: true,
         _count: { select: { domains: true, orders: true, payments: true } },
       },
       orderBy: { createdAt: 'desc' },
@@ -79,6 +89,44 @@ export class UserRepository extends BaseRepository<any> {
 
   async verifyEmail(userId: string) {
     return db.user.update({ where: { id: userId }, data: { emailVerified: true } });
+  }
+
+  async blockUser(userId: string) {
+    return db.user.update({
+      where: { id: userId },
+      data: { role: 'blocked' },
+    });
+  }
+
+  async unblockUser(userId: string, previousRole: string = 'customer') {
+    return db.user.update({
+      where: { id: userId },
+      data: { role: previousRole },
+    });
+  }
+
+  async getUserStats() {
+    const [totalUsers, activeUsers, blockedUsers, adminUsers, unverifiedUsers, todayUsers, thisWeekUsers, thisMonthUsers] = await Promise.all([
+      db.user.count(),
+      db.user.count({ where: { role: { in: ['customer', 'admin', 'moderator'] } } }),
+      db.user.count({ where: { role: 'blocked' } }),
+      db.user.count({ where: { role: 'admin' } }),
+      db.user.count({ where: { emailVerified: false, role: { not: 'blocked' } } }),
+      db.user.count({ where: { createdAt: { gte: new Date(new Date().setHours(0, 0, 0, 0)) } } }),
+      db.user.count({ where: { createdAt: { gte: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000) } } }),
+      db.user.count({ where: { createdAt: { gte: new Date(new Date().getFullYear(), new Date().getMonth(), 1) } } }),
+    ]);
+
+    return {
+      totalUsers,
+      activeUsers,
+      blockedUsers,
+      adminUsers,
+      unverifiedUsers,
+      todayUsers,
+      thisWeekUsers,
+      thisMonthUsers,
+    };
   }
 
   async deleteWithCascade(userId: string) {

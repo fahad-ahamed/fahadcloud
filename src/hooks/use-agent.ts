@@ -40,7 +40,7 @@ export function useAgent() {
       if (data.reasoningChain) setReasoningChain(data.reasoningChain);
       if (data.tasks?.length > 0) loadHistory();
     } catch (e: any) {
-      setMessages(prev => [...prev, { role: 'system', content: `Error: ${e.message}`, timestamp: new Date().toISOString() }]);
+      setMessages(prev => [...prev, { role: 'system', content: 'Error: ' + e.message, timestamp: new Date().toISOString() }]);
     }
     setLoading(false);
     setThinking(false);

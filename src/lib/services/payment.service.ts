@@ -69,7 +69,7 @@ export class PaymentService {
   }
 
   async approvePayment(paymentId: string, adminId: string, adminNotes?: string, ip?: string) {
-    const payment = await paymentRepository.findByOrderId(''); // need to fix
+    // Direct lookup by ID below
     const paymentRecord = await db.payment.findUnique({ where: { id: paymentId }, include: { order: true } });
     if (!paymentRecord) return { error: 'Payment not found', status: 404 };
     if (paymentRecord.status === 'paid') return { error: 'Payment is already approved', status: 400 };
@@ -92,7 +92,10 @@ export class PaymentService {
         if (!existingDomain) {
           const domainName = paymentRecord.order.domainName;
           const parts = domainName.split('.');
-          await domainRepository.createWithDns({
+          const tld = parts.slice(1).join('.');
+          
+          // Create the domain with DNS records
+          const newDomain = await domainRepository.createWithDns({
             name: domainName, tld: '.' + parts.slice(1).join('.'), sld: parts[0],
             isFree: false, status: 'active', userId: paymentRecord.order.userId,
             orderId: paymentRecord.orderId, years: paymentRecord.order.years || 1,
@@ -110,7 +113,7 @@ export class PaymentService {
       try {
         const domain = await db.domain.findFirst({ where: { name: paymentRecord.order.domainName, userId: paymentRecord.order.userId } });
         if (domain) {
-          await db.hostingEnvironment.create({ data: { userId: paymentRecord.order.userId, domainId: domain.id, planSlug: paymentRecord.order.hostingPlanSlug, status: 'active', rootPath: `/home/hosting/${paymentRecord.order.userId}/${domain.name}`, serverType: 'static', sslEnabled: false, storageUsed: 0, storageLimit: 5368709120 } });
+          await db.hostingEnvironment.create({ data: { userId: paymentRecord.order.userId, domainId: domain.id, planSlug: paymentRecord.order.hostingPlanSlug, status: 'active', rootPath: `/home/fahad/hosting/users/${paymentRecord.order.userId}/${domain.name}`, serverType: 'static', sslEnabled: false, storageUsed: 0, storageLimit: 5368709120 } });
         }
       } catch {}
     }

@@ -1,84 +1,166 @@
-# ☁️ FahadCloud
+# ☁️ FahadCloud - AI-Powered Domain & Hosting Platform
 
-**Domain Provider & Hosting Platform** — A full-featured domain registration, web hosting, and cloud management platform built with Next.js, TypeScript, Prisma, and SQLite.
+<div align="center">
+
+![FahadCloud](https://img.shields.io/badge/FahadCloud-v4.0.0-emerald?style=for-the-badge)
+![Next.js](https://img.shields.io/badge/Next.js-15-black?style=flat-square&logo=next.js)
+![TypeScript](https://img.shields.io/badge/TypeScript-5-blue?style=flat-square&logo=typescript)
+![Prisma](https://img.shields.io/badge/Prisma-ORM-2D3748?style=flat-square&logo=prisma)
+![License](https://img.shields.io/badge/License-MIT-green?style=flat-square)
+
+**Domain Provider & Hosting Platform with 14 AI Agents**
+
+[Deploy in 1-Click](#-1-click-deploy) · [Features](#-features) · [Installation](#-installation) · [API Reference](#-api-reference)
+
+</div>
 
 ---
 
-## 🌟 Features
+## 🚀 Features
+
+### 🤖 14 Specialized AI Agents (All v2.0)
+| Agent | Capability |
+|-------|-----------|
+| DevOps Agent | CI/CD pipelines, build optimization, zero-downtime deploys |
+| Security Agent | Threat detection, intrusion prevention, firewall management |
+| Deployment Agent | One-click deploys for React, Next.js, Vue, PHP, Python, WordPress |
+| Monitoring Agent | 24/7 CPU/RAM/Disk monitoring with intelligent alerting |
+| Debugging Agent | Root cause analysis, automated fix suggestions |
+| Infrastructure Agent | Docker/K8s orchestration, server provisioning |
+| Scaling Agent | Auto-scaling, load balancing, traffic management |
+| Recovery Agent | Self-healing, crash recovery, backup restoration |
+| DNS Agent | Automatic DNS configuration, zone management |
+| SSL Agent | Let's Encrypt provisioning, auto-renewal |
+| Database Agent | Intelligent DB creation, migration, optimization |
+| Optimization Agent | Performance profiling, cost optimization |
+| Chat Agent | Natural language interface with context-aware understanding |
+| Auto Learning Agent | Continuous learning, pattern recognition, cross-domain insights |
 
 ### 🌐 Domain Management
-- Domain search and registration across 50+ TLDs
-- Free domain support (.fahadcloud.com, .tk, .ml, .ga, .cf, .eu.org, .pp.ua)
-- DNS zone management with full record types (A, AAAA, CNAME, MX, TXT, NS, SRV, CAA)
+- Free domain registration (.fahadcloud.com, .tk, .ml, .ga, .cf, .gq)
+- 50+ TLD support with competitive pricing
+- Real-time availability checking
+- DNS record management (A, AAAA, CNAME, MX, TXT, NS)
 - WHOIS lookup
-- Domain transfer and renewal
 
-### 🖥️ Web Hosting
-- Docker-based isolated hosting environments
-- Multiple server types: Static, Node.js, PHP, Python
-- One-click deployment with build logs
-- SSL certificate management (Let's Encrypt)
-- Storage management with 5GB default quota
-- Backup creation and restoration
+### 🚀 Deployment & Hosting
+- One-click deployment with AI automation
+- 10 framework templates (React, Next.js, Vue, Node.js, PHP, Python, etc.)
+- Docker container isolation
+- SSL certificate auto-provisioning
+- Hosting environment management
 
 ### 💳 Payment System
 - bKash payment integration (Bangladesh)
-- Manual payment verification with admin approval
-- Fraud detection and duplicate checking
-- Payment history and receipt tracking
-- BDT currency with USD conversion
+- Admin payment verification
+- Fraud detection scoring
+- Order management
 
-### 🤖 AI Agent
-- Intelligent cloud assistant with conversational AI
-- Multi-step task execution (deploy, DNS config, SSL setup)
-- Task approval workflow for critical operations
-- Agent memory and learning system
-- Security policy enforcement
-- Infrastructure monitoring and orchestration
-
-### 👨‍💼 Admin Panel
-- Dashboard with real-time statistics
-- User management (view, edit, ban)
-- Domain management and DNS oversight
-- Payment verification and approval
-- Pricing management for TLDs and hosting plans
-- Fraud detection and monitoring
-- System monitoring (CPU, RAM, Disk, Network)
-- Admin action audit logs
-
-### 🔐 Security
-- JWT-based authentication with HTTP-only cookies
-- Email OTP verification for registration
-- Action verification OTP for sensitive operations (password change, account deletion)
-- Rate limiting on all critical endpoints
-- Admin login with separate verification
-- Shell execution sandboxing
-
-### 📧 Email System
-- SMTP email with Nodemailer
-- Registration email verification (6-digit OTP, 10-minute expiry)
-- Security action verification emails
-- Resend verification with cooldown
+### 🔒 Security
+- JWT authentication with HTTP-only cookies
+- Email verification with OTP
+- Password reset via SMTP
+- Rate limiting (Registration, Login, Password Reset)
+- Admin role-based access control
+- 2FA-ready architecture
 
 ---
 
-## 🏗️ Tech Stack
+## 📦 1-Click Deploy
 
-| Layer | Technology |
-|-------|-----------|
-| **Framework** | Next.js 15 (App Router) |
-| **Language** | TypeScript 5.6+ |
-| **Styling** | Tailwind CSS 4 |
-| **UI Components** | Radix UI + shadcn/ui |
-| **Database** | SQLite via Prisma ORM 6 |
-| **Authentication** | JWT (jose) + bcryptjs |
-| **Email** | Nodemailer (Gmail SMTP) |
-| **Process Manager** | PM2 |
-| **AI** | z-ai-web-dev-sdk |
-| **Payments** | bKash API |
-| **Hosting** | Docker containers |
-| **DNS** | BIND9 zone management |
-| **SSL** | Let's Encrypt (certbot) |
+### Option 1: AWS EC2 (Recommended)
+
+```bash
+# 1. Launch Ubuntu 22.04 EC2 instance (t3.medium recommended)
+
+# 2. SSH into your server
+ssh ubuntu@your-server-ip
+
+# 3. Run the 1-click installer
+curl -fsSL https://raw.githubusercontent.com/fahad-ahamed/fahadcloud/main/install.sh | bash
+```
+
+### Option 2: Manual Installation
+
+```bash
+# Clone the repository
+git clone https://github.com/fahad-ahamed/fahadcloud.git
+cd fahadcloud
+
+# Run the setup script
+chmod +x start.sh
+./start.sh build
+```
+
+---
+
+## 🔧 Installation
+
+### Prerequisites
+- Node.js 18+ 
+- npm 9+
+- 2GB+ RAM recommended
+
+### Step-by-Step Setup
+
+```bash
+# 1. Clone repository
+git clone https://github.com/fahad-ahamed/fahadcloud.git
+cd fahadcloud
+
+# 2. Install dependencies
+npm install
+
+# 3. Configure environment
+cp .env.example .env
+# Edit .env with your settings (see Environment Variables below)
+
+# 4. Initialize database
+npx prisma db push
+npx prisma generate
+
+# 5. Seed pricing data
+node seed-prod.js
+
+# 6. Build for production
+npm run build
+
+# 7. Start with PM2
+npm start
+# OR
+pm2 start ecosystem.config.js
+```
+
+### Environment Variables
+
+Create a `.env` file in the project root:
+
+```env
+# Database
+DATABASE_URL="file:./db/fahadcloud.db"
+
+# Authentication
+JWT_SECRET=your-secret-key-change-this
+
+# SMTP Email (Gmail recommended)
+SMTP_HOST=smtp.gmail.com
+SMTP_PORT=587
+SMTP_SECURE=false
+SMTP_USER=your-email@gmail.com
+SMTP_PASS=your-app-password
+SMTP_FROM_NAME=FahadCloud
+SMTP_FROM_EMAIL=your-email@gmail.com
+
+# Admin
+OWNER_EMAIL=your-email@gmail.com
+SERVER_IP=your-server-ip
+```
+
+#### Gmail SMTP Setup
+1. Enable 2-Factor Authentication on your Google Account
+2. Go to https://myaccount.google.com/apppasswords
+3. Generate a new App Password for "Mail"
+4. Use the 16-character password as `SMTP_PASS`
 
 ---
 
@@ -86,524 +168,142 @@
 
 ```
 fahadcloud/
-├── install.sh                    # 1-click install script
-├── start.sh                      # 1-click run script
-├── ecosystem.config.js           # PM2 production config
-├── package.json
-├── next.config.ts
-├── tsconfig.json
-├── postcss.config.mjs
-├── .env.example                  # Environment template
-├── .gitignore
-│
-├── prisma/
-│   └── schema.prisma             # Database schema (21 models)
-│
-├── public/
-│   ├── logo.svg
-│   └── robots.txt
-│
-├── scripts/
-│   └── monitoring-cron.sh        # Server monitoring cron
-│
-└── src/
-    ├── app/
-    │   ├── layout.tsx             # Root layout
-    │   ├── page.tsx               # Main SPA entry
-    │   ├── globals.css            # Global styles
-    │   └── api/                   # API Routes
-    │       ├── admin/             # Admin endpoints
-    │       │   ├── route.ts       # Admin dashboard stats
-    │       │   ├── domains/       # Domain management
-    │       │   ├── fraud/         # Fraud detection
-    │       │   ├── hosting/       # Hosting management
-    │       │   ├── logs/          # Audit logs
-    │       │   ├── payments/      # Payment approval/rejection
-    │       │   ├── pricing/       # TLD & plan pricing
-    │       │   ├── stats/         # System statistics
-    │       │   ├── storage/       # Storage management
-    │       │   └── users/         # User management
-    │       ├── agent/             # AI Agent endpoints
-    │       │   ├── admin/         # Agent admin controls
-    │       │   ├── chat/          # Chat completions
-    │       │   ├── deploy/        # Deployment agent
-    │       │   ├── enterprise/    # Enterprise features
-    │       │   ├── execute/       # Code execution
-    │       │   ├── history/       # Session history
-    │       │   ├── infrastructure/# Infrastructure agent
-    │       │   ├── learning/      # Learning agent
-    │       │   ├── monitor/       # Monitoring (collect + view)
-    │       │   ├── orchestrator/  # Agent orchestration
-    │       │   ├── security/      # Security policies
-    │       │   └── tasks/         # Task management
-    │       ├── auth/              # Authentication
-    │       │   ├── admin-login/   # Admin authentication
-    │       │   ├── admin-verify/  # Admin verification
-    │       │   ├── login/         # User login
-    │       │   ├── me/            # Current user
-    │       │   ├── register/      # User registration
-    │       │   ├── resend-verification/  # Resend OTP
-    │       │   ├── verify-action/ # Security action OTP
-    │       │   └── verify-email/  # Email verification
-    │       ├── domains/           # Domain operations
-    │       │   ├── check/         # Availability check
-    │       │   ├── dns/           # DNS management
-    │       │   ├── free/          # Free domains
-    │       │   └── route.ts       # User domains
-    │       ├── hosting/           # Hosting management
-    │       ├── orders/            # Order processing
-    │       ├── payments/          # Payment system
-    │       │   ├── create/        # Create payment
-    │       │   ├── history/       # Payment history
-    │       │   └── verify/        # Verify payment
-    │       ├── pricing/           # Public pricing
-    │       ├── seed/              # Database seeder
-    │       ├── storage/           # File storage
-    │       ├── system/            # System utilities
-    │       │   └── shell/         # Shell execution
-    │       ├── upload/            # File upload
-    │       ├── user/              # User profile/account
-    │       └── whois/             # WHOIS lookup
-    │
-    ├── components/ui/             # shadcn/ui components
-    │   ├── avatar.tsx
-    │   ├── badge.tsx
-    │   ├── button.tsx
-    │   ├── card.tsx
-    │   ├── dialog.tsx
-    │   ├── input.tsx
-    │   ├── label.tsx
-    │   ├── select.tsx
-    │   ├── separator.tsx
-    │   ├── sonner.tsx
-    │   ├── switch.tsx
-    │   ├── tabs.tsx
-    │   ├── textarea.tsx
-    │   ├── toast.tsx
-    │   └── toaster.tsx
-    │
-    ├── features/                  # Feature-based UI modules
-    │   ├── admin/                 # Admin panels
-    │   ├── agent/                 # AI Agent interface
-    │   ├── auth/                  # Authentication forms
-    │   ├── dashboard/             # User dashboard
-    │   ├── deploy/                # Deployment interface
-    │   ├── domains/               # Domain management UI
-    │   ├── hosting/               # Hosting management UI
-    │   ├── landing/               # Landing page
-    │   ├── monitoring/            # System monitoring UI
-    │   ├── payments/              # Payment dialogs
-    │   ├── profile/               # User profile
-    │   ├── ssl/                   # SSL management
-    │   ├── storage/               # File storage UI
-    │   └── terminal/              # Web terminal
-    │
-    ├── hooks/                     # React custom hooks
-    │   ├── use-admin.ts
-    │   ├── use-agent.ts
-    │   ├── use-auth.tsx
-    │   ├── use-domains.ts
-    │   ├── use-monitoring.ts
-    │   └── use-toast.ts
-    │
-    ├── lib/                       # Core business logic
-    │   ├── agent/                 # AI Agent modules
-    │   │   ├── core.ts
-    │   │   ├── types.ts
-    │   │   ├── enterprise/
-    │   │   ├── infrastructure/
-    │   │   ├── learning/
-    │   │   ├── memory/
-    │   │   ├── orchestrator/
-    │   │   └── security/
-    │   ├── cache/                 # In-memory caching
-    │   ├── config/                # App configuration
-    │   ├── events/                # Event bus system
-    │   ├── middleware/            # Auth, logging, validation
-    │   ├── repositories/          # Data access layer
-    │   ├── services/              # Business services
-    │   ├── auth.ts                # JWT auth utilities
-    │   ├── bkash.ts               # bKash payment integration
-    │   ├── db.ts                  # Prisma client singleton
-    │   ├── dns-engine.ts          # BIND9 DNS management
-    │   ├── hosting-engine.ts      # Docker hosting engine
-    │   ├── monitoring-engine.ts   # System monitoring
-    │   ├── otp.ts                 # OTP generation/validation
-    │   ├── rateLimit.ts           # Rate limiting
-    │   ├── shell-sandbox.ts       # Shell execution sandbox
-    │   ├── smtp.ts                # Email sending/templates
-    │   ├── ssl-engine.ts          # Let's Encrypt SSL
-    │   ├── sysutils.ts            # System utilities
-    │   ├── formatters.ts          # Data formatting
-    │   └── utils.ts               # UI utilities
-    │
-    ├── services/                  # Client-side API services
-    │   ├── api.ts
-    │   └── index.ts
-    │
-    └── types/                     # TypeScript type definitions
-        └── index.ts
+├── prisma/                  # Database schema
+│   └── schema.prisma
+├── src/
+│   ├── app/
+│   │   ├── api/            # API routes (60+ endpoints)
+│   │   │   ├── admin/      # Admin APIs (stats, users, payments, etc.)
+│   │   │   ├── agent/      # AI Agent APIs (chat, deploy, monitor, etc.)
+│   │   │   ├── auth/       # Auth APIs (login, register, reset, verify)
+│   │   │   ├── domains/    # Domain APIs (check, register, DNS)
+│   │   │   ├── hosting/    # Hosting APIs
+│   │   │   ├── orders/     # Order management
+│   │   │   ├── payments/   # Payment processing
+│   │   │   ├── storage/    # File storage
+│   │   │   └── user/       # User profile
+│   │   ├── layout.tsx      # Root layout
+│   │   └── page.tsx        # Main SPA application
+│   ├── components/ui/      # Reusable UI components (shadcn/ui)
+│   ├── features/           # Feature components
+│   │   ├── admin/          # Admin panel (users, payments, domains, security)
+│   │   ├── agent/          # AI Agent chat, cloud intel, task panel
+│   │   ├── auth/           # Login, Register, Admin Login, Password Reset
+│   │   ├── dashboard/      # Dashboard overview
+│   │   ├── deploy/         # One-click deployment
+│   │   ├── domains/        # Domain search & DNS management
+│   │   ├── hosting/        # Hosting environments
+│   │   ├── landing/        # Landing pages
+│   │   ├── monitoring/     # System monitoring
+│   │   ├── payments/       # Payment & orders
+│   │   ├── profile/        # User profile & settings
+│   │   ├── ssl/            # SSL management
+│   │   ├── storage/        # File storage
+│   │   └── terminal/       # AI terminal
+│   ├── hooks/              # React hooks (auth, agent, domains, admin, monitoring)
+│   ├── lib/
+│   │   ├── agent/          # AI Agent engine (orchestrator, core, types, auto-learning)
+│   │   ├── middleware/     # Auth, logging, validation middleware
+│   │   ├── repositories/   # Data access layer
+│   │   └── services/       # Business logic (auth, admin, domain, payment, user)
+│   ├── services/           # API client
+│   └── types/              # TypeScript type definitions
+├── public/                 # Static assets
+├── ecosystem.config.js     # PM2 configuration
+├── install.sh              # 1-click installer
+├── seed-prod.js            # Database seeder
+└── start.sh                # Start script
 ```
 
 ---
 
-## 🚀 Quick Start
-
-### Prerequisites
-
-- **Node.js** 20.x or later
-- **npm** 10.x or later
-- **Linux** server (Ubuntu 22.04+ recommended)
-- **2GB RAM** minimum (4GB recommended)
-
-### Option 1: 1-Click Install (Recommended)
-
-```bash
-# Clone the repository
-git clone https://github.com/fahad249/fahadcloud.git
-cd fahadcloud
-
-# Run the 1-click installer
-chmod +x install.sh && ./install.sh
-
-# Edit environment configuration
-nano .env
-
-# Start the application
-chmod +x start.sh && ./start.sh
-```
-
-### Option 2: Manual Setup
-
-```bash
-# 1. Clone and enter directory
-git clone https://github.com/fahad249/fahadcloud.git
-cd fahadcloud
-
-# 2. Install dependencies
-npm install
-
-# 3. Setup environment
-cp .env.example .env
-nano .env  # Edit with your values
-
-# 4. Initialize database
-mkdir -p db
-npx prisma generate
-npx prisma db push
-
-# 5. Build for production
-npm run build
-
-# 6. Start with PM2
-npm install -g pm2
-pm2 start ecosystem.config.js
-pm2 save
-pm2 startup
-```
-
-### Option 3: Development Mode
-
-```bash
-git clone https://github.com/fahad249/fahadcloud.git
-cd fahadcloud
-npm install
-cp .env.example .env
-# Edit .env...
-npx prisma generate
-npx prisma db push
-npm run dev
-# Open http://localhost:3000
-```
-
----
-
-## ⚙️ Configuration
-
-### Environment Variables
-
-| Variable | Required | Default | Description |
-|----------|----------|---------|-------------|
-| `DATABASE_URL` | Yes | `file:./db/fahadcloud.db` | SQLite database path |
-| `JWT_SECRET` | **Yes** | — | Secret key for JWT tokens |
-| `SERVER_IP` | No | — | Your server's public IP |
-| `PORT` | No | `3000` | Application port |
-| `SMTP_HOST` | Yes* | `smtp.gmail.com` | SMTP server host |
-| `SMTP_PORT` | No | `587` | SMTP server port |
-| `SMTP_USER` | Yes* | — | SMTP username (email) |
-| `SMTP_PASS` | Yes* | — | SMTP password/app password |
-| `BKASH_API_KEY` | No | — | bKash API key |
-| `BKASH_API_SECRET` | No | — | bKash API secret |
-| `BKASH_MERCHANT_NUMBER` | No | — | bKash merchant number |
-| `USD_TO_BDT` | No | `110` | USD to BDT conversion rate |
-
-*\*Required for email verification features*
-
-### SMTP Setup (Gmail)
-
-1. Go to [Google Account Settings](https://myaccount.google.com/)
-2. Enable 2-Factor Authentication
-3. Go to App Passwords → Generate a new app password
-4. Use the 16-character password as `SMTP_PASS`
-
-```env
-SMTP_HOST=smtp.gmail.com
-SMTP_PORT=587
-SMTP_USER=your-email@gmail.com
-SMTP_PASS=xxxx-xxxx-xxxx-xxxx
-```
-
-### Generate a Secure JWT Secret
-
-```bash
-openssl rand -hex 32
-```
-
----
-
-## 🗄️ Database
-
-FahadCloud uses **SQLite** via Prisma ORM, making it easy to deploy without any external database server.
-
-### Database Models (21 total)
-
-- **User** — User accounts with roles, balance, storage
-- **Domain** — Registered domains with DNS and SSL status
-- **DnsRecord** — DNS zone records
-- **TldPricing** — TLD pricing configuration
-- **HostingPlan** — Available hosting plans
-- **HostingEnvironment** — User hosting environments
-- **Backup** — Hosting backups
-- **UserDatabase** — User databases
-- **FileEntry** — File storage entries
-- **Order** — Purchase orders
-- **Payment** — Payment records with fraud detection
-- **PaymentLog** — Payment action audit trail
-- **CartItem** — Shopping cart items
-- **Notification** — User notifications
-- **AdminLog** — Admin action audit trail
-- **RateLimitEntry** — Rate limiting data
-- **AgentSession/Message/Task/TaskLog/Memory/ToolExecution** — AI Agent system
-- **AgentSecurityPolicy/SystemConfig** — Agent configuration
-- **MonitoringMetric** — System monitoring data
-- **DeploymentLog** — Deployment history
-- **EmailVerification/ActionVerification** — OTP verification
-
-### Database Commands
-
-```bash
-# Generate Prisma client
-npx prisma generate
-
-# Push schema to database (creates tables)
-npx prisma db push
-
-# Reset database (⚠️ deletes all data)
-npx prisma db push --force-reset
-
-# Open Prisma Studio (visual database browser)
-npx prisma studio
-```
-
-### Seed Initial Data
-
-Visit `http://localhost:3000/api/seed` after starting the app to populate default TLD pricing, hosting plans, and admin user.
-
----
-
-## 🔑 Default Admin Access
-
-After seeding, the default admin credentials are:
-
-- **Email:** admin@fahadcloud.com
-- **Password:** admin123
-
-> ⚠️ **Change the admin password immediately after first login!**
-
----
-
-## 🚦 Running the Application
-
-### Using start.sh (Recommended)
-
-```bash
-./start.sh          # Production mode (PM2)
-./start.sh dev      # Development mode (hot reload)
-./start.sh stop     # Stop the app
-./start.sh restart  # Restart the app
-./start.sh status   # Show process status
-./start.sh logs     # View live logs
-./start.sh build    # Rebuild and start
-```
-
-### Using npm directly
-
-```bash
-npm run dev         # Development server on port 3000
-npm run build       # Build for production
-npm run start       # Start production server
-```
-
-### Using PM2 directly
-
-```bash
-pm2 start ecosystem.config.js    # Start
-pm2 stop fahadcloud              # Stop
-pm2 restart fahadcloud           # Restart
-pm2 logs fahadcloud              # View logs
-pm2 monit                        # Live monitoring
-pm2 save                         # Save process list
-pm2 startup                      # Auto-start on reboot
-```
-
----
-
-## 🌐 Production Deployment
-
-### With Nginx Reverse Proxy
-
-```nginx
-server {
-    listen 80;
-    server_name yourdomain.com;
-
-    location / {
-        proxy_pass http://127.0.0.1:3000;
-        proxy_http_version 1.1;
-        proxy_set_header Upgrade $http_upgrade;
-        proxy_set_header Connection 'upgrade';
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
-        proxy_cache_bypass $http_upgrade;
-    }
-}
-```
-
-### With HTTPS (Let's Encrypt)
-
-```bash
-sudo apt install certbot python3-certbot-nginx
-sudo certbot --nginx -d yourdomain.com
-```
-
-### Server Requirements for Production
-
-| Resource | Minimum | Recommended |
-|----------|---------|-------------|
-| RAM | 2 GB | 4 GB |
-| CPU | 1 vCPU | 2 vCPU |
-| Storage | 20 GB | 50 GB SSD |
-| OS | Ubuntu 20.04 | Ubuntu 22.04 LTS |
-
-### Additional Production Setup
-
-```bash
-# Install Docker (for hosting engine)
-curl -fsSL https://get.docker.com | sh
-sudo usermod -aG docker $USER
-
-# Install BIND9 (for DNS engine)
-sudo apt install bind9 bind9utils
-
-# Install certbot (for SSL engine)
-sudo apt install certbot
-
-# Setup monitoring cron
-crontab scripts/monitoring-cron.sh
-```
-
----
-
-## 🔌 API Overview
+## 🔌 API Reference
 
 ### Authentication
-
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| POST | `/api/auth/register` | Register new user (sends OTP) |
+| POST | `/api/auth/register` | Register new user |
+| POST | `/api/auth/login` | Login (email or username + password) |
+| POST | `/api/auth/admin-login` | Request admin OTP |
+| POST | `/api/auth/admin-verify` | Verify admin OTP |
+| GET | `/api/auth/me` | Get current user |
 | POST | `/api/auth/verify-email` | Verify email with OTP |
 | POST | `/api/auth/resend-verification` | Resend verification OTP |
-| POST | `/api/auth/verify-action` | Request/verify action OTP |
-| POST | `/api/auth/login` | Login (blocks unverified emails) |
-| GET | `/api/auth/me` | Get current user |
-| POST | `/api/auth/admin-login` | Admin login |
-| POST | `/api/auth/admin-verify` | Admin verification |
+| POST | `/api/auth/request-reset` | Request password reset |
+| POST | `/api/auth/verify-reset` | Verify reset OTP |
+| POST | `/api/auth/reset-password` | Reset password |
+
+### AI Agents
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| POST | `/api/agent/chat` | Chat with AI agent |
+| GET | `/api/agent/history` | Get chat/task history |
+| GET | `/api/agent/orchestrator` | Get agent overview |
+| GET | `/api/agent/security` | Get security status |
+| GET | `/api/agent/learning` | Get learning predictions |
+| GET | `/api/agent/monitor` | Get system metrics |
+| POST | `/api/agent/deploy` | Start AI deployment |
+| POST | `/api/agent/execute` | Execute terminal command |
+| GET | `/api/agent/tasks` | Get agent tasks |
 
 ### Domains
-
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| GET | `/api/domains/check?tld=xyz` | Check domain availability |
 | GET | `/api/domains` | List user domains |
 | POST | `/api/domains` | Register domain |
-| GET/PUT | `/api/domains/dns` | Manage DNS records |
-| GET | `/api/domains/free` | List free TLDs |
-
-### Hosting
-
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| GET | `/api/hosting` | List hosting environments |
-| POST | `/api/hosting` | Create hosting environment |
-
-### Payments
-
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| POST | `/api/payments/create` | Create payment |
-| POST | `/api/payments/verify` | Submit bKash transaction |
-| GET | `/api/payments/history` | Payment history |
+| GET | `/api/domains/check?domain=` | Check availability |
+| GET | `/api/domains/dns` | Get DNS records |
+| POST | `/api/domains/dns` | Add DNS record |
 
 ### Admin
-
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| GET | `/api/admin` | Admin dashboard stats |
-| GET/PUT | `/api/admin/users` | User management |
-| GET/PUT | `/api/admin/domains` | Domain management |
+| GET | `/api/admin/stats` | Get admin statistics |
+| GET | `/api/admin/users` | List all users |
+| PUT | `/api/admin/users` | Block/unblock/update user |
+| DELETE | `/api/admin/users` | Delete user |
+| GET | `/api/admin/payments` | List payments |
 | POST | `/api/admin/payments/approve` | Approve payment |
 | POST | `/api/admin/payments/reject` | Reject payment |
-| GET/PUT | `/api/admin/pricing` | Pricing management |
+| POST | `/api/admin/change-password` | Change admin password |
 
 ---
 
-## 🛡️ Security Features
+## 👤 Default Admin Account
 
-- **JWT Authentication** — HTTP-only cookies, 7-day expiry
-- **Email OTP Verification** — 6-digit OTP, 10-minute expiry, 2-minute resend cooldown
-- **Action Verification** — OTP required for password change, account deletion, domain transfer
-- **Rate Limiting** — Per-IP rate limits on login, register, domain search, payments, shell
-- **Shell Sandboxing** — Restricted command execution with allow/deny lists
-- **Admin Audit Logging** — All admin actions logged with IP and timestamp
-- **Fraud Detection** — Duplicate payment detection, fraud scoring
-- **Input Validation** — Request validation middleware on all endpoints
+After seeding, a default admin account is created:
+
+| Field | Value |
+|-------|-------|
+| Email | `fahadcloud24@gmail.com` (or your OWNER_EMAIL) |
+| Password | Set during first setup |
+| Role | admin (super_admin) |
+
+**⚠️ Important:** Change the default password immediately after first login!
 
 ---
 
-## 🤝 Contributing
+## 🛠️ Tech Stack
 
-1. Fork the repository
-2. Create a feature branch: `git checkout -b feature/my-feature`
-3. Commit your changes: `git commit -m 'Add my feature'`
-4. Push to the branch: `git push origin feature/my-feature`
-5. Submit a Pull Request
+- **Frontend:** Next.js 15, React 19, TypeScript, Tailwind CSS 4, shadcn/ui
+- **Backend:** Next.js API Routes, Prisma ORM, SQLite
+- **AI:** Custom multi-agent orchestration engine with 14 specialized agents
+- **Auth:** JWT (HTTP-only cookies), OTP email verification, bcryptjs
+- **Email:** Nodemailer with Gmail SMTP
+- **Process:** PM2 with cluster mode
+- **Deployment:** Docker containers, standalone Node.js server
 
 ---
 
 ## 📄 License
 
-This project is proprietary software. All rights reserved.
+MIT License - see [LICENSE](LICENSE) for details.
 
 ---
 
-## 👨‍💻 Author
+<div align="center">
 
-**Fahad** — [GitHub](https://github.com/fahad249)
+**Built with ❤️ by [Fahad Ahamed](https://github.com/fahad-ahamed)**
 
----
+</div>
 
-<p align="center">
-  Built with ❤️ using Next.js, TypeScript, and Prisma
-</p>

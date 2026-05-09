@@ -27,10 +27,10 @@ export default function PaymentsView({
   orders, ordersLoading, onSubmitPayment,
 }: PaymentsViewProps) {
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 animate-fade-in">
       <Card className="bg-gradient-to-r from-emerald-50 to-teal-50 border-emerald-500/20">
         <CardContent className="p-6">
-          <h2 className="text-2xl font-bold mb-2">Payment via bKash</h2>
+          <h2 className="text-xl sm:text-2xl font-bold mb-2">Payment via bKash</h2>
           <p className="text-slate-500">Pay securely using bKash mobile banking</p>
         </CardContent>
       </Card>
@@ -54,11 +54,11 @@ export default function PaymentsView({
             <div className="space-y-3">
               <div>
                 <Label className="text-slate-600">bKash Number</Label>
-                <Input className="bg-white border-slate-300" placeholder="01XXXXXXXXX" value={bkashNumber} onChange={e => setBkashNumber(e.target.value)} />
+                <Input className="bg-white border-slate-200 focus:border-emerald-400" placeholder="01XXXXXXXXX" value={bkashNumber} onChange={e => setBkashNumber(e.target.value)} />
               </div>
               <div>
                 <Label className="text-slate-600">Transaction ID (TRXID)</Label>
-                <Input className="bg-white border-slate-300" placeholder="Enter your bKash TRX ID" value={bkashTrxId} onChange={e => setBkashTrxId(e.target.value)} />
+                <Input className="bg-white border-slate-200 focus:border-emerald-400" placeholder="Enter your bKash TRX ID" value={bkashTrxId} onChange={e => setBkashTrxId(e.target.value)} />
               </div>
               <Button className="w-full bg-emerald-600 hover:bg-emerald-700" onClick={onSubmitPayment} disabled={paymentProcessing}>
                 {paymentProcessing ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <CreditCard className="w-4 h-4 mr-2" />}
@@ -94,7 +94,7 @@ export default function PaymentsView({
             </div>
           ) : orders.length > 0 ? (
             <div className="overflow-x-auto">
-              <table className="w-full text-sm">
+              <table className="w-full text-sm min-w-[400px]">
                 <thead>
                   <tr className="text-slate-500 text-left">
                     <th className="pb-2">Order</th>

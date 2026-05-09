@@ -7,6 +7,8 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const { email, password, firstName, lastName, company, phone, address, city, country } = body;
 
+    console.log('[REGISTER] Request received:', { email, firstName, lastName, hasPassword: !!password });
+
     const result = await authService.register(
       { email, password, firstName, lastName, company, phone, address, city, country },
       ip
@@ -21,7 +23,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json(successBody, { status: status || 201 });
   } catch (error: any) {
-    console.error('Registration error:', error);
+    console.error('[REGISTER] Full error:', error.message, error.stack);
     return NextResponse.json(
       { error: 'Registration failed. Please try again.' },
       { status: 500 }

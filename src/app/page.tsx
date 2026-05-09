@@ -351,6 +351,9 @@ function FahadCloudAppInner() {
         onLogin={doLogin} onRegister={doRegister} onAdminRequestOtp={doAdminRequestOtp} onAdminVerifyOtp={doAdminVerifyOtp}
         onVerifyRegOtp={doVerifyRegOtp} onResendVerification={doResendVerification}
         onRequestActionVerify={requestActionVerify} onVerifyAndDeleteAccount={verifyAndDeleteAccount}
+        showForgotPassword={showForgotPassword} setShowForgotPassword={setShowForgotPassword}
+        showResetPassword={showResetPassword} setShowResetPassword={setShowResetPassword}
+        resetEmail={resetEmail} setResetEmail={setResetEmail}
         onNavigate={setCurrentView}
       />
     )

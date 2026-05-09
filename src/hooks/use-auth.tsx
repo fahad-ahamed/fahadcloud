@@ -18,7 +18,8 @@ const AuthContext = createContext<AuthContextType | null>(null);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(true)
+  const [actionLoading, setActionLoading] = useState(false);
 
   const checkAuth = useCallback(async () => {
     try {
@@ -32,6 +33,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const login = useCallback(async (email: string, password: string) => {
+    setActionLoading(true);
     const data = await apiClient.login(email, password);
     await checkAuth();
     return data;

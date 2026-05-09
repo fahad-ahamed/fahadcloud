@@ -26,7 +26,7 @@ export default function DashboardView({
           <span className="text-slate-500">Loading dashboard...</span>
         </div>
       )}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 stagger-children">
         {[
           { label: 'Domains', value: domains.length, icon: Globe, color: 'from-emerald-500 to-teal-500', change: '+2 this month' },
           { label: 'Active Hosting', value: hostingEnvs.filter(h => h.status === 'active').length, icon: Server, color: 'from-emerald-500 to-teal-500', change: 'All healthy' },
@@ -41,7 +41,7 @@ export default function DashboardView({
                 </div>
                 <TrendingUp className="w-4 h-4 text-emerald-500" />
               </div>
-              <div className="text-2xl font-bold">{s.value}</div>
+              <div className="text-xl sm:text-2xl font-bold">{s.value}</div>
               <div className="text-xs text-slate-500 mt-1">{s.change}</div>
             </CardContent>
           </Card>
@@ -49,7 +49,7 @@ export default function DashboardView({
       </div>
 
       {/* Quick Actions */}
-      <Card className="bg-white border-slate-200 shadow-sm">
+      <Card className="bg-white border-slate-200 shadow-sm animate-slide-up">
         <CardHeader>
           <CardTitle className="text-lg">Quick Actions</CardTitle>
         </CardHeader>
@@ -78,12 +78,12 @@ export default function DashboardView({
           </CardHeader>
           <CardContent className="space-y-2">
             {domains.slice(0, 5).map(d => (
-              <div key={d.id} className="flex items-center justify-between p-3 bg-slate-50 rounded-lg">
-                <div className="flex items-center gap-3">
-                  <Globe className="w-4 h-4 text-emerald-600" />
-                  <span className="font-medium">{d.name}</span>
+              <div key={d.id} className="flex items-center justify-between p-3 bg-slate-50 rounded-lg gap-2">
+                <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+                  <Globe className="w-4 h-4 text-emerald-600 shrink-0" />
+                  <span className="font-medium truncate">{d.name}</span>
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 shrink-0">
                   <Badge className={statusColor(d.status)}>{d.status}</Badge>
                   {d.sslEnabled && <Lock className="w-4 h-4 text-emerald-500" />}
                 </div>

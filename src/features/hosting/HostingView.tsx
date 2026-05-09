@@ -17,10 +17,10 @@ export default function HostingView({
   hostingEnvs, onNavigate, onRestartEnv,
 }: HostingViewProps) {
   return (
-    <div className="space-y-6">
-      <div className="flex justify-between items-center">
+    <div className="space-y-6 animate-fade-in">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
         <h2 className="text-xl font-bold">Hosting Environments</h2>
-        <Button className="bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700" onClick={() => onNavigate('deploy')}>
+        <Button className="bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 w-full sm:w-auto" onClick={() => onNavigate('deploy')}>
           <Plus className="w-4 h-4 mr-2" />
           New Hosting
         </Button>
@@ -29,15 +29,15 @@ export default function HostingView({
         hostingEnvs.map(h => (
           <Card key={h.id} className="bg-white border-slate-200 shadow-sm">
             <CardContent className="p-4">
-              <div className="flex items-center justify-between mb-3">
-                <div className="flex items-center gap-3">
-                  <Server className="w-5 h-5 text-emerald-600" />
-                  <div>
-                    <div className="font-medium">{h.domain?.name || h.rootPath}</div>
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-3 gap-2">
+                <div className="flex items-center gap-3 min-w-0">
+                  <Server className="w-5 h-5 text-emerald-600 shrink-0" />
+                  <div className="min-w-0">
+                    <div className="font-medium truncate">{h.domain?.name || h.rootPath}</div>
                     <div className="text-xs text-slate-500">{h.serverType} - {h.planSlug}</div>
                   </div>
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 shrink-0">
                   <Badge className={statusColor(h.status)}>{h.status}</Badge>
                   {h.sslEnabled && <Lock className="w-4 h-4 text-emerald-500" />}
                 </div>
@@ -49,11 +49,11 @@ export default function HostingView({
                 <div>
                   <span className="text-slate-500">Last Deploy:</span> <span>{h.lastDeployedAt ? new Date(h.lastDeployedAt).toLocaleDateString() : 'Never'}</span>
                 </div>
-                <div className="flex gap-2">
-                  <Button size="sm" variant="outline" className="border-slate-300 text-xs" onClick={() => onRestartEnv(h.id)}>
+                <div className="flex gap-2 sm:col-span-1">
+                  <Button size="sm" variant="outline" className="border-slate-200 focus:border-emerald-400 text-xs" onClick={() => onRestartEnv(h.id)}>
                     <RotateCcw className="w-3 h-3" />
                   </Button>
-                  <Button size="sm" variant="outline" className="border-slate-300 text-xs">
+                  <Button size="sm" variant="outline" className="border-slate-200 focus:border-emerald-400 text-xs">
                     <ExternalLink className="w-3 h-3" />
                   </Button>
                 </div>

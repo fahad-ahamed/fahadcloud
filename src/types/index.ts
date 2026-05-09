@@ -146,7 +146,6 @@ export interface OrderItem {
   bKashTrxId?: string
   paymentStatus?: string
   adminNotes?: string
-  domain?: any
   payment?: any
   updatedAt?: string
 }
@@ -209,21 +208,36 @@ export interface FileEntry {
 
 // ============ DOMAIN SEARCH RESULT ============
 export interface DomainSearchResult {
-  query: string
-  sld: string
-  tld: string
+  domain: string
+  available: boolean
+  price: number
+  isFree: boolean
+  availabilitySource?: string
+  pricing?: {
+    registerPrice: number
+    renewPrice: number
+    transferPrice?: number
+    isFree: boolean
+    promo?: boolean
+    promoPrice?: number
+    category?: string
+  } | null
+  alternatives?: {
+    domain: string
+    available: boolean
+    price: number
+    isFree: boolean
+    pricing: any
+  }[]
+  sld?: string
+  tld?: string
+  query?: string
   primaryResult?: {
     domain: string
     available: boolean
     availabilitySource: string
     pricing: any
   }
-  alternatives?: Record<string, {
-    domain: string
-    available: boolean
-    availabilitySource: string
-    pricing: any
-  }>
 }
 
 // ============ ADMIN TYPES ============

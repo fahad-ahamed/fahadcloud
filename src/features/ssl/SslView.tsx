@@ -13,25 +13,25 @@ interface SslViewProps {
 
 export default function SslView({ domains, onInstallSsl }: SslViewProps) {
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 animate-fade-in">
       <Card className="bg-white border-slate-200 shadow-sm">
         <CardHeader>
           <CardTitle className="text-lg">SSL Certificates</CardTitle>
         </CardHeader>
         <CardContent>
           {domains.map(d => (
-            <div key={d.id} className="flex items-center justify-between p-4 bg-slate-50 rounded-xl mb-2">
-              <div className="flex items-center gap-3">
-                {d.sslEnabled ? <Lock className="w-5 h-5 text-emerald-500" /> : <Shield className="w-5 h-5 text-slate-400" />}
-                <div>
-                  <div className="font-medium">{d.name}</div>
+            <div key={d.id} className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-3 sm:p-4 bg-slate-50 rounded-xl mb-2 gap-2">
+              <div className="flex items-center gap-3 min-w-0">
+                {d.sslEnabled ? <Lock className="w-5 h-5 text-emerald-500 shrink-0" /> : <Shield className="w-5 h-5 text-slate-400 shrink-0" />}
+                <div className="min-w-0">
+                  <div className="font-medium truncate">{d.name}</div>
                   <div className="text-xs text-slate-500">{d.sslEnabled ? "SSL Active - Provider: Let's Encrypt" : 'No SSL installed'}</div>
                 </div>
               </div>
               {d.sslEnabled ? (
-                <Badge className="bg-emerald-100 text-emerald-700 border-emerald-200">Secure</Badge>
+                <Badge className="bg-emerald-100 text-emerald-700 border-emerald-200 shrink-0">Secure</Badge>
               ) : (
-                <Button size="sm" className="bg-emerald-600 hover:bg-emerald-700" onClick={() => onInstallSsl(d.name)}>
+                <Button size="sm" className="bg-emerald-600 hover:bg-emerald-700 w-full sm:w-auto" onClick={() => onInstallSsl(d.name)}>
                   Install SSL
                 </Button>
               )}
