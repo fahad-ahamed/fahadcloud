@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { validateShellCommand, getSandboxEnv, getSandboxCwd } from '@/lib/shell-sandbox';
+import { validateShellCommand, getSandboxEnv, getSandboxCwd, getAdminHelpText, getUserHelpText } from '@/lib/shell-sandbox';
+import { db } from '@/lib/db';
 
 export async function POST(request: NextRequest) {
   try {
@@ -12,27 +13,42 @@ export async function POST(request: NextRequest) {
     try { payload = (await jwtVerify(token, secret)).payload; } catch { return NextResponse.json({ error: 'Invalid token' }, { status: 401 }); }
 
     const userId = payload.userId as string;
+    const userEmail = payload.email as string;
+    const userRole = payload.role as string;
+
+    // Check if user is blocked
+    const user = await db.user.findUnique({ where: { id: userId }, select: { id: true, role: true, email: true, adminRole: true } });
+    if (!user || user.role === 'blocked') {
+      return NextResponse.json({ error: 'Account blocked' }, { status: 403 });
+    }
+
+    const isAdmin = user.role === 'admin' || user.adminRole === 'super_admin' || user.email === 'admin@fahadcloud.com' || user.email === 'fahadcloud24@gmail.com';
+
     const body = await request.json();
     const { command } = body;
 
     if (!command) return NextResponse.json({ error: 'Command required' }, { status: 400 });
 
-    // Handle built-in commands that provide real info
+    // Log the terminal command to user activity
+    try {
+      await db.userActivityLog.create({
+        data: {
+          userId,
+          action: 'terminal_command',
+          category: 'terminal',
+          details: JSON.stringify({ command: command.substring(0, 200), isAdmin }),
+          ipAddress: request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip') || 'unknown',
+          userAgent: request.headers.get('user-agent') || undefined,
+        }
+      });
+    } catch {}
+
+    // Handle built-in commands
     if (command === 'help') {
       return NextResponse.json({
-        output: `FahadCloud Ubuntu Terminal - Available Commands:
-
-System Info:     whoami, hostname, uname -a, uptime, date
-Resource Usage:  df -h, free -m, top -bn1 | head -20
-Processes:       ps aux, pm2 list
-Docker:          docker ps, docker images, docker logs <container>
-Files:           ls, cat, pwd, du -sh, find, tree
-Network:         ping, curl, wget, nslookup, dig
-Development:     node --version, npm --version, git status
-AI Commands:     ai-status, ai-deploy, ai-ssl
-
-⚠️  Dangerous commands are blocked for safety.`,
+        output: isAdmin ? getAdminHelpText() : getUserHelpText(),
         exitCode: 0,
+        isAdmin,
       });
     }
 
@@ -51,31 +67,37 @@ RAM: ${Math.round((totalMem - freeMem) / totalMem * 100)}% (${Math.round((totalM
 Uptime: ${Math.floor(os.uptime() / 3600)}h ${Math.floor((os.uptime() % 3600) / 60)}m
 Load: ${os.loadavg().map(l => l.toFixed(2)).join(', ')}
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-AI Agents: 13 active
+AI Agents: 14 active
 Orchestrator: Online
-Memory: Active`,
+Memory: Active
+Access Level: ${isAdmin ? 'ADMIN (Full)' : 'USER (Restricted)'}`,
           exitCode: 0,
+          isAdmin,
         });
       } catch {
-        return NextResponse.json({ output: 'AI Status: System online', exitCode: 0 });
+        return NextResponse.json({ output: 'AI Status: System online', exitCode: 0, isAdmin });
       }
     }
 
-    // Validate command against sandbox rules
-    const validation = validateShellCommand(command);
+    // Validate command against sandbox rules based on role
+    const validation = validateShellCommand(command, isAdmin, userId);
     if (!validation.safe) {
       return NextResponse.json({
         output: `⛔ Command blocked: ${validation.reason}`,
         exitCode: 126,
         riskLevel: validation.riskLevel,
+        isAdmin,
       });
     }
 
-    // Use user's hosting directory as CWD, or home dir
-    const homeDir = `/home/fahad/hosting/users/${userId}`;
-    const fallbackDir = getSandboxCwd(userId);
-    let cwd = homeDir;
-    try { require('fs').mkdirSync(homeDir, { recursive: true }); } catch {}
+    // Determine working directory based on role
+    const cwd = isAdmin ? '/home/fahad' : getSandboxCwd(userId, false);
+    const env = isAdmin ? getSandboxEnv(userId, true) : getSandboxEnv(userId, false);
+
+    // Ensure user directory exists
+    if (!isAdmin) {
+      try { require('fs').mkdirSync(cwd, { recursive: true }); } catch {}
+    }
 
     const startTime = Date.now();
     let output = '';
@@ -83,13 +105,28 @@ Memory: Active`,
 
     try {
       const { execSync } = require('child_process');
-      output = execSync(validation.sanitized!, {
-        timeout: 15000,
-        maxBuffer: 512 * 1024,
-        encoding: 'utf-8',
-        cwd,
-        env: { ...getSandboxEnv(userId), HOME: cwd },
-      }) || '';
+      
+      // For admin users, use full shell with sudo capability
+      if (isAdmin) {
+        output = execSync(validation.sanitized!, {
+          timeout: 30000,
+          maxBuffer: 1024 * 1024,
+          encoding: 'utf-8',
+          cwd,
+          env: { ...process.env, ...env },
+        }) || '';
+      } else {
+        // For regular users, restrict to their directory
+        // Prepend cd to user's directory for safety
+        const safeCommand = `cd ${cwd} 2>/dev/null; ${validation.sanitized!}`;
+        output = execSync(safeCommand, {
+          timeout: 15000,
+          maxBuffer: 512 * 1024,
+          encoding: 'utf-8',
+          cwd,
+          env: { ...env, HOME: cwd },
+        }) || '';
+      }
     } catch (error: any) {
       output = (error.stdout || '') + (error.stderr ? '\n' + error.stderr : '') || error.message;
       exitCode = error.status || 1;
@@ -97,7 +134,13 @@ Memory: Active`,
 
     const duration = Date.now() - startTime;
 
-    return NextResponse.json({ output: output.substring(0, 10000), exitCode, duration, riskLevel: validation.riskLevel });
+    return NextResponse.json({ 
+      output: output.substring(0, 10000), 
+      exitCode, 
+      duration, 
+      riskLevel: validation.riskLevel,
+      isAdmin,
+    });
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }

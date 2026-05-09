@@ -175,16 +175,16 @@ export async function PUT(request: NextRequest) {
     if (!auth.authenticated) return authErrorResponse(auth);
 
     const body = await request.json();
-    const { envId, status, sslEnabled, planSlug, serverType, storageLimit } = body;
+    const { id, envId, status, rootPath, sslEnabled, planSlug, serverType, storageLimit } = body;
 
-    if (!envId) {
+    if (!id && !envId) {
       return NextResponse.json(
         { error: 'Environment ID is required' },
         { status: 400 }
       );
     }
 
-    const env = await db.hostingEnvironment.findUnique({ where: { id: envId } });
+    const env = await db.hostingEnvironment.findUnique({ where: { id: id || envId } });
     if (!env) {
       return NextResponse.json({ error: 'Hosting environment not found' }, { status: 404 });
     }
@@ -204,6 +204,7 @@ export async function PUT(request: NextRequest) {
     if (planSlug) updateData.planSlug = planSlug;
     if (serverType) updateData.serverType = serverType;
     if (storageLimit !== undefined) updateData.storageLimit = storageLimit;
+    if (rootPath !== undefined) updateData.rootPath = rootPath;
 
     if (Object.keys(updateData).length === 0) {
       return NextResponse.json(
@@ -213,7 +214,7 @@ export async function PUT(request: NextRequest) {
     }
 
     const updated = await db.hostingEnvironment.update({
-      where: { id: envId },
+      where: { id: id || envId },
       data: updateData,
     });
 
@@ -244,5 +245,41 @@ export async function PUT(request: NextRequest) {
       { error: 'Failed to update hosting environment' },
       { status: 500 }
     );
+  }
+}
+
+export async function DELETE(request: NextRequest) {
+  try {
+    const auth = await requireSuperAdmin(request);
+    if (!auth.authenticated) return authErrorResponse(auth);
+
+    const searchParams = request.nextUrl.searchParams;
+    const id = searchParams.get('id');
+
+    if (!id) {
+      return NextResponse.json({ error: 'Environment ID is required' }, { status: 400 });
+    }
+
+    const env = await db.hostingEnvironment.findUnique({ where: { id } });
+    if (!env) {
+      return NextResponse.json({ error: 'Hosting environment not found' }, { status: 404 });
+    }
+
+    await db.hostingEnvironment.delete({ where: { id } });
+
+    const ip = getClientIp(request);
+    await adminLogRepository.logAction({
+      adminId: auth.user!.userId,
+      action: 'hosting_env_deleted',
+      targetType: 'hostingEnvironment',
+      targetId: id,
+      details: JSON.stringify({ userId: env.userId, planSlug: env.planSlug, rootPath: env.rootPath }),
+      ipAddress: ip,
+    });
+
+    return NextResponse.json({ message: 'Hosting environment deleted successfully' });
+  } catch (error: any) {
+    console.error('Admin delete hosting error:', error);
+    return NextResponse.json({ error: 'Failed to delete hosting environment' }, { status: 500 });
   }
 }

@@ -1119,3 +1119,14 @@ export class MasterOrchestrator {
     // Learning is recorded for future reference
   }
 }
+
+
+// Singleton instance getter
+let _orchestrator: MasterOrchestrator | null = null;
+
+export function getOrchestrator(): MasterOrchestrator {
+  if (!_orchestrator) {
+    _orchestrator = new MasterOrchestrator();
+  }
+  return _orchestrator;
+}

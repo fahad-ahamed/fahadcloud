@@ -1,3 +1,4 @@
+import { ActivityLog } from '@/lib/activity-logger';
 import { NextRequest, NextResponse } from 'next/server';
 import { PrismaClient } from '@prisma/client';
 import { getOrchestrator } from '@/lib/agent/orchestrator';
@@ -10,6 +11,7 @@ const prisma = new PrismaClient();
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
+    await ActivityLog.aiChat(userId, body.message || '', request);
     const { message, sessionId } = body;
 
     if (!message || typeof message !== 'string') {

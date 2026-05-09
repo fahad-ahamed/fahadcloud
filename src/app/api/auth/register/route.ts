@@ -1,3 +1,4 @@
+import { ActivityLog } from '@/lib/activity-logger';
 import { NextRequest, NextResponse } from 'next/server';
 import { authService } from '@/lib/services';
 

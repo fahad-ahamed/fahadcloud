@@ -528,3 +528,22 @@ model ActionVerification {
   @@index([otp])
   @@index([expiresAt])
 }
+
+// ============ USER ACTIVITY LOGGING ============
+
+model UserActivityLog {
+  id          String   @id @default(cuid())
+  userId      String
+  action      String
+  category    String
+  details     String?
+  ipAddress   String?
+  userAgent   String?
+  metadata    String?
+  createdAt   DateTime @default(now())
+  
+  @@index([userId])
+  @@index([action])
+  @@index([category])
+  @@index([createdAt])
+}

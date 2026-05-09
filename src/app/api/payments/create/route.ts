@@ -1,3 +1,4 @@
+import { ActivityLog } from '@/lib/activity-logger';
 import { NextRequest, NextResponse } from 'next/server';
 import { paymentService } from '@/lib/services';
 import { requireAuth, getClientIp, authErrorResponse } from '@/lib/middleware';

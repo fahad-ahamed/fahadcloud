@@ -123,6 +123,65 @@ export async function POST(request: NextRequest) {
   }
 }
 
+
+export async function PUT(request: NextRequest) {
+  try {
+    const auth = await requireAdmin(request);
+    if (!auth.authenticated) return authErrorResponse(auth);
+
+    const body = await request.json();
+    const { domainId, status, autoRenew, sslEnabled, nameserver1, nameserver2, privacyProtect, locked } = body;
+
+    if (!domainId) {
+      return NextResponse.json({ error: 'Domain ID is required' }, { status: 400 });
+    }
+
+    const domain = await domainRepository.findById(domainId);
+    if (!domain) {
+      return NextResponse.json({ error: 'Domain not found' }, { status: 404 });
+    }
+
+    const updateData: any = {};
+    if (status) {
+      const validStatuses = ['active', 'expired', 'suspended', 'pending'];
+      if (!validStatuses.includes(status)) {
+        return NextResponse.json({ error: 'Invalid status' }, { status: 400 });
+      }
+      updateData.status = status;
+    }
+    if (autoRenew !== undefined) updateData.autoRenew = autoRenew;
+    if (sslEnabled !== undefined) updateData.sslEnabled = sslEnabled;
+    if (nameserver1 !== undefined) updateData.nameserver1 = nameserver1;
+    if (nameserver2 !== undefined) updateData.nameserver2 = nameserver2;
+    if (privacyProtect !== undefined) updateData.privacyProtect = privacyProtect;
+    if (locked !== undefined) updateData.locked = locked;
+
+    if (Object.keys(updateData).length === 0) {
+      return NextResponse.json({ error: 'No fields to update' }, { status: 400 });
+    }
+
+    const updated = await db.domain.update({
+      where: { id: domainId },
+      data: updateData,
+    });
+
+    const ip = getClientIp(request);
+    await adminLogRepository.logAction({
+      adminId: auth.user!.userId,
+      action: 'domain_updated',
+      targetType: 'domain',
+      targetId: domainId,
+      details: JSON.stringify({ domainName: domain.name, updates: updateData }),
+      ipAddress: ip,
+    });
+
+    return NextResponse.json({ message: 'Domain updated successfully', domain: updated });
+  } catch (error: any) {
+    console.error('Admin update domain error:', error);
+    return NextResponse.json({ error: 'Failed to update domain' }, { status: 500 });
+  }
+}
+
 export async function DELETE(request: NextRequest) {
   try {
     const auth = await requireAdmin(request);

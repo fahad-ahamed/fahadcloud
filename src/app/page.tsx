@@ -31,11 +31,27 @@ import PaymentsView from '@/features/payments/PaymentsView'
 import TerminalView from '@/features/terminal/TerminalView'
 import ProfileView from '@/features/profile/ProfileView'
 import AdminView from '@/features/admin/AdminView'
+import SuperAdminView from '@/features/admin/SuperAdminView'
 
 const agentIconMap: Record<string, any> = { Rocket, Shield, Monitor, AlertTriangle, Server, Database, Zap, RotateCcw, TrendingUp, Globe, CreditCard, Brain }
 
 function getNavItems(user: User | null) {
   if (!user) return []
+  
+  // ADMIN gets COMPLETELY different navigation - full project control
+  if (user.role === 'admin') {
+    return [
+      { id: 'admin', label: 'Admin Panel', icon: Shield },
+      { id: 'dashboard', label: 'My Dashboard', icon: LayoutDashboard },
+      { id: 'domains', label: 'My Domains', icon: Globe },
+      { id: 'ai_agent', label: 'AI Agent', icon: Brain, badge: '14' },
+      { id: 'hosting', label: 'My Hosting', icon: Server },
+      { id: 'ai_terminal', label: 'Terminal', icon: Terminal },
+      { id: 'profile', label: 'Profile', icon: UserCircle },
+    ]
+  }
+  
+  // REGULAR USER - only their own stuff
   return [
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
     { id: 'domains', label: 'Domains', icon: Globe },
@@ -50,7 +66,6 @@ function getNavItems(user: User | null) {
     { id: 'payments', label: 'Orders', icon: ShoppingCart },
     { id: 'ai_terminal', label: 'Terminal', icon: Terminal },
     { id: 'profile', label: 'Profile', icon: UserCircle },
-    ...(user.role === 'admin' ? [{ id: 'admin', label: 'Admin', icon: Settings }] : []),
   ]
 }
 
@@ -64,8 +79,6 @@ function FahadCloudAppInner() {
   // Navigation
   const [currentView, setCurrentView] = useState('landing')
   const [mobileMenu, setMobileMenu] = useState(false)
-
-  // Dashboard
   const [hostingEnvs, setHostingEnvs] = useState<HostingEnv[]>([])
   const [dashboardLoading, setDashboardLoading] = useState(false)
 
@@ -193,7 +206,7 @@ function FahadCloudAppInner() {
   }, [])
 
   // ============ EFFECTS ============
-  useEffect(() => { if (user) loadDashboard() }, [user, loadDashboard])
+  useEffect(() => { if (user) { loadDashboard(); if (user.role === 'admin' && currentView === 'dashboard') setCurrentView('admin'); } }, [user, loadDashboard])
 
   useEffect(() => {
     if (!user) return
@@ -252,7 +265,7 @@ function FahadCloudAppInner() {
   const doAdminVerifyOtp = async () => {
     setAdminError(''); if (!adminOtp.trim()) { setAdminError('Please enter the verification code'); return }
     setAdminVerifyLoading(true)
-    try { await apiClient.adminLoginVerify(adminEmail.trim(), adminOtp.trim()); setShowAdminLogin(false); setAdminOtpSent(false); setAdminOtp(''); setAdminEmail(''); setAdminError(''); await checkAuth(); setCurrentView('dashboard'); toast.success('Admin login successful!') }
+    try { await apiClient.adminLoginVerify(adminEmail.trim(), adminOtp.trim()); setShowAdminLogin(false); setAdminOtpSent(false); setAdminOtp(''); setAdminEmail(''); setAdminError(''); await checkAuth(); setCurrentView('admin'); toast.success('Admin login successful!') }
     catch (e: any) { setAdminError(e.message) }
     setAdminVerifyLoading(false)
   }
@@ -421,6 +434,7 @@ function FahadCloudAppInner() {
           </div>
           <div className="flex items-center gap-3">
             <Badge className="bg-emerald-100 text-emerald-700 border-emerald-200">৳{user.balance.toFixed(0)}</Badge>
+            {user.role === 'admin' && <Badge className="bg-red-100 text-red-700 border-red-200 text-[10px]">ADMIN</Badge>}
             <Button variant="ghost" size="icon" className="relative" onClick={() => setCurrentView('profile')}><Bell className="w-4 h-4" /><span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full" /></Button>
           </div>
         </header>
@@ -437,9 +451,9 @@ function FahadCloudAppInner() {
           {currentView === 'ssl' && <SslView domains={domainHook.domains} onInstallSsl={installSsl} />}
           {currentView === 'storage' && <StorageView user={user} files={files} uploading={uploading} storageLoading={storageLoading} onUpload={uploadFiles} onDeleteFile={() => {}} />}
           {currentView === 'payments' && <PaymentsView paymentOrder={paymentOrder} bkashNumber={bkashNumber} setBkashNumber={setBkashNumber} bkashTrxId={bkashTrxId} setBkashTrxId={setBkashTrxId} paymentProcessing={paymentProcessing} orders={orders} ordersLoading={ordersLoading} onSubmitPayment={submitPayment} />}
-          {currentView === 'ai_terminal' && <TerminalView termHistory={termHistory} termInput={termInput} setTermInput={setTermInput} termRunning={termRunning} onExecute={executeCommand} />}
+          {currentView === 'ai_terminal' && <TerminalView termHistory={termHistory} termInput={termInput} setTermInput={setTermInput} termRunning={termRunning} onExecute={executeCommand} isAdmin={user?.role === 'admin'} />}
           {currentView === 'profile' && <ProfileView user={user} profileEditing={profileEditing} setProfileEditing={setProfileEditing} profileForm={profileForm} setProfileForm={setProfileForm} profileSaving={profileSaving} showChangePassword={showChangePassword} setShowChangePassword={setShowChangePassword} passwordForm={passwordForm} setPasswordForm={setPasswordForm} passwordSaving={false} showCurrentPassword={showCurrentPassword} setShowCurrentPassword={setShowCurrentPassword} showNewPassword={showNewPassword} setShowNewPassword={setShowNewPassword} actionVerifyStep={actionVerifyStep} setActionVerifyStep={setActionVerifyStep} actionVerifyOtp={actionVerifyOtp} setActionVerifyOtp={setActionVerifyOtp} actionVerifyLoading={actionVerifyLoading} actionVerifyAction={actionVerifyAction} onSaveProfile={saveProfile} onChangePassword={changePassword} onLogout={doLogout} onDeleteAccount={() => setShowDeleteAccount(true)} />}
-          {currentView === 'admin' && user.role === 'admin' && <AdminView adminStats={adminHook.stats} adminUsers={adminHook.users} adminPayments={adminHook.payments} aiAdminStats={adminHook.aiStats} adminLoading={adminHook.loading} onApprovePayment={async (id: string) => { await apiClient.approvePayment(id); adminHook.loadAdminData(); toast.success('Payment approved') }} onRejectPayment={async (id: string) => { await apiClient.rejectPayment(id, 'Invalid TRX ID'); adminHook.loadAdminData() }} onEmergencyShutdown={async () => { await apiClient.request('/api/agent/admin', { method: 'POST', body: JSON.stringify({ action: 'emergency_shutdown' }) }); toast.success('AI system shutdown completed'); adminHook.loadAdminData() }} onClearMemory={async () => { await apiClient.request('/api/agent/admin', { method: 'POST', body: JSON.stringify({ action: 'clear_memory' }) }); toast.success('AI memory cleared') }} onRefresh={adminHook.loadAdminData} />}
+          {currentView === 'admin' && user.role === 'admin' && <SuperAdminView onNavigate={setCurrentView} />}
         </div>
       </main>
     </div>
