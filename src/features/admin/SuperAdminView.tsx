@@ -15,8 +15,7 @@ import {
   CheckCircle, XCircle, AlertCircle, Send, Mail, Phone, MapPin,
   Building, CreditCard, Lock, Clock, Download, Upload, X, Key,
   Pause, ArrowUpRight, UserPlus, UserX, UserCheck, MoreHorizontal,
-  Pencil, ToggleLeft, ToggleRight, Wifi, WifiOff, HardHat, Wrench,
-} from 'lucide-react';
+  Pencil, ToggleLeft, ToggleRight, Wifi, WifiOff, HardHat, Wrench, LayoutDashboard} from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface SuperAdminViewProps {
@@ -1251,23 +1250,29 @@ export default function SuperAdminView({ onNavigate }: SuperAdminViewProps) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    let mounted = true;
     (async () => {
       try {
         const res = await fetch('/api/admin/stats');
-        const data = await res.json();
-        setStats(data);
-      } catch {}
-      setLoading(false);
+        if (res.ok && mounted) {
+          const data = await res.json();
+          setStats(data);
+        }
+      } catch (err) {
+        console.error('Failed to load admin stats:', err);
+      }
+      if (mounted) setLoading(false);
     })();
+    return () => { mounted = false; };
   }, []);
 
   const statCards = stats ? [
-    { label: 'Total Users', value: stats.overview?.totalUsers || stats.totalUsers || 0, icon: Users, color: 'text-blue-500', bg: 'bg-blue-50' },
-    { label: 'Total Domains', value: stats.overview?.totalDomains || stats.totalDomains || 0, icon: Globe, color: 'text-emerald-500', bg: 'bg-emerald-50' },
-    { label: 'Hosting Env', value: stats.overview?.totalHosting || stats.totalHosting || 0, icon: Server, color: 'text-purple-500', bg: 'bg-purple-50' },
-    { label: 'Revenue', value: `$${stats.overview?.totalRevenue || stats.totalRevenue || 0}`, icon: DollarSign, color: 'text-green-500', bg: 'bg-green-50' },
-    { label: 'Pending Payments', value: stats.overview?.pendingPayments || stats.pendingPayments || 0, icon: CreditCard, color: 'text-yellow-500', bg: 'bg-yellow-50' },
-    { label: 'AI Sessions', value: stats.overview?.totalAgentSessions || stats.totalAgentSessions || 0, icon: Brain, color: 'text-violet-500', bg: 'bg-violet-50' },
+    { label: 'Total Users', value: stats.overview?.totalUsers ?? stats.totalUsers ?? 0, icon: Users, color: 'text-blue-500', bg: 'bg-blue-50' },
+    { label: 'Total Domains', value: stats.overview?.totalDomains ?? stats.totalDomains ?? 0, icon: Globe, color: 'text-emerald-500', bg: 'bg-emerald-50' },
+    { label: 'Hosting Env', value: stats.overview?.totalHosting ?? stats.totalHosting ?? 0, icon: Server, color: 'text-purple-500', bg: 'bg-purple-50' },
+    { label: 'Revenue', value: `$${stats.overview?.totalRevenue ?? stats.totalRevenue ?? 0}`, icon: DollarSign, color: 'text-green-500', bg: 'bg-green-50' },
+    { label: 'Pending Payments', value: stats.overview?.pendingPayments ?? stats.pendingPayments ?? 0, icon: CreditCard, color: 'text-yellow-500', bg: 'bg-yellow-50' },
+    { label: 'AI Sessions', value: stats.overview?.totalAgentSessions ?? stats.totalAgentSessions ?? 0, icon: Brain, color: 'text-violet-500', bg: 'bg-violet-50' },
   ] : [];
 
   return (

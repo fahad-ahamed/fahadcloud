@@ -206,7 +206,10 @@ function FahadCloudAppInner() {
   }, [])
 
   // ============ EFFECTS ============
-  useEffect(() => { if (user) { loadDashboard(); if (user.role === 'admin' && currentView === 'dashboard') setCurrentView('admin'); } }, [user, loadDashboard])
+  useEffect(() => { if (user) loadDashboard() }, [user, loadDashboard])
+
+  // Redirect admin to admin panel on first login
+  useEffect(() => { if (user?.role === 'admin' && currentView === 'dashboard') setCurrentView('admin') }, [user])
 
   useEffect(() => {
     if (!user) return
