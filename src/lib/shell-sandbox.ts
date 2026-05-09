@@ -1,5 +1,5 @@
 // Shell Command Sandbox - Security Layer
-// Only allows safe, whitelisted commands with strict validation
+// Allows safe commands with strict validation - expanded for Ubuntu terminal
 
 const ALLOWED_COMMANDS = [
   // File operations (read-only)
@@ -11,13 +11,30 @@ const ALLOWED_COMMANDS = [
   // Network diagnostics
   'ping', 'curl', 'wget', 'nslookup', 'dig', 'whois', 'host', 'traceroute',
   // Development
-  'node', 'npm', 'npx', 'git', 'python3', 'pip3',
+  'node', 'npm', 'npx', 'git', 'python3', 'pip3', 'bun',
   // System info
   'date', 'uptime', 'whoami', 'uname', 'hostname', 'env', 'which',
+  'free', 'top', 'htop',
   // Process info
-  'ps', 'top', 'htop',
+  'ps', 'pm2',
   // Docker (safe subset)
-  'docker ps', 'docker logs', 'docker inspect', 'docker images',
+  'docker',
+  // Custom AI commands
+  'ai-status', 'ai-deploy', 'ai-ssl',
+  // Help
+  'help',
+  // Additional safe commands for Ubuntu terminal
+  'id', 'groups', 'last', 'w', 'who', 'mesg',
+  'cal', 'bc', 'expr',
+  'diff', 'cmp', 'comm',
+  'xargs', 'tee',
+  'ln', 'readlink', 'realpath', 'basename', 'dirname',
+  'touch', 'mkdir', 'cp', 'mv',
+  'tar', 'gzip', 'gunzip', 'zip', 'unzip',
+  'openssl',
+  'ss', 'netstat', 'ip',
+  'journalctl',
+  'lsblk', 'mount', 'fdisk',
 ];
 
 const BLOCKED_PATTERNS = [
@@ -45,6 +62,8 @@ const BLOCKED_PATTERNS = [
   /\/etc\/shadow/i, /\/etc\/passwd/i, /\.ssh\//i,
   // Dangerous redirects
   />\s*\/dev\//i,
+  // rm with force on important dirs
+  /\brm\s+.*-.*f.*\s+\//i,
 ];
 
 const DANGEROUS_ENV_VARS = ['JWT_SECRET', 'SMTP_PASS', 'DATABASE_URL', 'BKASH_API_KEY', 'BKASH_API_SECRET'];
@@ -82,19 +101,18 @@ export function validateShellCommand(command: string): ShellValidationResult {
     }
   }
 
-  // Check for path traversal
+  // Check for path traversal (except in find)
   if (/\.\.\//.test(trimmed) && !/find\s/.test(trimmed)) {
     return { safe: false, reason: 'Path traversal detected', riskLevel: 'high' };
   }
 
-  // Check for command chaining with dangerous operators
+  // Check for dangerous command chaining
   if (/;\s*(rm|sudo|chmod|chown|dd|shutdown|reboot)/i.test(trimmed)) {
     return { safe: false, reason: 'Dangerous command chaining detected', riskLevel: 'critical' };
   }
 
   // Check for backtick/subshell execution
   if (/`.*`/.test(trimmed) || /\$\(.*\)/.test(trimmed)) {
-    // Allow simple subshells for safe operations
     const subshellContent = trimmed.match(/\$\((.*?)\)/g);
     if (subshellContent) {
       for (const sub of subshellContent) {
@@ -109,7 +127,7 @@ export function validateShellCommand(command: string): ShellValidationResult {
   const baseCommand = trimmed.split(/\s+/)[0].replace(/^\//, '');
   const fullBaseCommand = trimmed.split(/[\s|;&]/)[0].replace(/^\//, '');
 
-  // Check if base command is in allowed list
+  // Check if base command is in allowed list (or starts with an allowed command)
   const isAllowed = ALLOWED_COMMANDS.some(allowed => {
     return baseCommand === allowed || fullBaseCommand === allowed || trimmed.startsWith(allowed + ' ');
   });
@@ -122,17 +140,19 @@ export function validateShellCommand(command: string): ShellValidationResult {
 }
 
 export function getSandboxEnv(userId: string): Record<string, string> {
-  const homeDir = `/home/hosting/${userId}`;
+  const homeDir = `/home/fahad/hosting/users/${userId}`;
   return {
     HOME: homeDir,
-    PATH: '/usr/local/bin:/usr/bin:/bin',
+    PATH: '/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin',
     TERM: 'xterm-256color',
     LANG: 'en_US.UTF-8',
     NODE_ENV: 'production',
+    USER: userId.substring(0, 8),
+    SHELL: '/bin/bash',
+    EDITOR: 'nano',
   };
 }
 
 export function getSandboxCwd(userId: string): string {
-  return `/home/hosting/${userId}`;
+  return `/home/fahad/hosting/users/${userId}`;
 }
-

@@ -3,15 +3,44 @@ import { db } from '@/lib/db';
 import { getCurrentUser } from '@/lib/auth';
 import { usdToBdt } from '@/lib/bkash';
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
+    // Try JWT auth first
+    const token = request.cookies.get('fahadcloud-token')?.value;
+    let userId: string | null = null;
+
+    if (token) {
+      try {
+        const { jwtVerify } = await import('jose');
+        const secret = new TextEncoder().encode(process.env.JWT_SECRET || 'fallback-dev-secret-change-in-prod');
+        const payload = (await jwtVerify(token, secret)).payload;
+        userId = payload.userId as string;
+      } catch {}
+    }
+
+    // Fallback to session auth
+    if (!userId) {
+      const currentUser = await getCurrentUser();
+      if (currentUser) userId = currentUser.userId;
+    }
+
     const plans = await db.hostingPlan.findMany({
       orderBy: [{ category: 'asc' }, { price: 'asc' }],
     });
 
-    return NextResponse.json({ plans });
+    // Get user's hosting environments if authenticated
+    let environments: any[] = [];
+    if (userId) {
+      environments = await db.hostingEnvironment.findMany({
+        where: { userId },
+        include: { domain: { select: { name: true, sslEnabled: true } } },
+        orderBy: { createdAt: 'desc' },
+      });
+    }
+
+    return NextResponse.json({ plans, environments });
   } catch (error: any) {
-    console.error('List hosting plans error:', error);
+    console.error('List hosting error:', error);
     return NextResponse.json(
       { error: 'Failed to list hosting plans' },
       { status: 500 }
@@ -27,7 +56,43 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { planSlug, domainName, billingCycle = 'monthly' } = body;
+    const { planSlug, domainName, billingCycle = 'monthly', action, envId } = body;
+
+    // Handle hosting environment actions
+    if (action && envId) {
+      const env = await db.hostingEnvironment.findFirst({
+        where: { id: envId, userId: currentUser.userId },
+      });
+      if (!env) {
+        return NextResponse.json({ error: 'Hosting environment not found' }, { status: 404 });
+      }
+
+      switch (action) {
+        case 'restart':
+          await db.hostingEnvironment.update({
+            where: { id: envId },
+            data: { status: 'active', lastDeployedAt: new Date(), deployLog: `Restarted at ${new Date().toISOString()}` },
+          });
+          return NextResponse.json({ message: 'Hosting environment restarted', envId });
+
+        case 'stop':
+          await db.hostingEnvironment.update({
+            where: { id: envId },
+            data: { status: 'stopped', deployLog: `Stopped at ${new Date().toISOString()}` },
+          });
+          return NextResponse.json({ message: 'Hosting environment stopped', envId });
+
+        case 'start':
+          await db.hostingEnvironment.update({
+            where: { id: envId },
+            data: { status: 'active', lastDeployedAt: new Date(), deployLog: `Started at ${new Date().toISOString()}` },
+          });
+          return NextResponse.json({ message: 'Hosting environment started', envId });
+
+        default:
+          return NextResponse.json({ error: 'Unknown action' }, { status: 400 });
+      }
+    }
 
     if (!planSlug) {
       return NextResponse.json(

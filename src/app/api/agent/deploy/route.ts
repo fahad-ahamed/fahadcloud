@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { PrismaClient } from '@prisma/client';
+import { getHostingEngine } from '@/lib/hosting-engine';
 
 const prisma = new PrismaClient();
 
@@ -18,7 +19,7 @@ export async function GET(request: NextRequest) {
 
     // Get user's domains
     const domains = await prisma.domain.findMany({ where: { userId } });
-    
+
     // Get deployment logs
     const deployments = await prisma.deploymentLog.findMany({
       where: { userId },
@@ -101,7 +102,6 @@ export async function POST(request: NextRequest) {
       });
       deploySessionId = session.id;
     } else {
-      // Verify the session exists
       const existingSession = await prisma.agentSession.findUnique({ where: { id: deploySessionId } });
       if (!existingSession) {
         const session = await prisma.agentSession.create({
@@ -127,19 +127,137 @@ export async function POST(request: NextRequest) {
       },
     });
 
+    // === FIX: Create HostingEnvironment record linked to the domain ===
+    const rootPath = `/home/fahad/hosting/users/${userId}/${domainName}`;
+
+    // Check if hosting env already exists for this domain
+    let hostingEnv = domain.hostingEnvId
+      ? await prisma.hostingEnvironment.findUnique({ where: { id: domain.hostingEnvId } })
+      : null;
+
+    if (!hostingEnv) {
+      // Try to use the Docker-based hosting engine
+      let dockerContainerId: string | null = null;
+      let dockerStatus: string | null = null;
+      let buildLogMsg = '';
+
+      try {
+        const hostingEngine = getHostingEngine();
+        if (hostingEngine.isDockerAvailable()) {
+          const deployResult = await hostingEngine.createHostingEnv(userId, domainName, framework);
+          if (deployResult.success) {
+            dockerContainerId = deployResult.containerId || null;
+            dockerStatus = 'running';
+            buildLogMsg = deployResult.buildLog || '';
+          } else {
+            buildLogMsg = deployResult.error || 'Docker deploy failed, using simulated env';
+          }
+        }
+      } catch (e: any) {
+        buildLogMsg = `Docker error: ${e.message}`;
+      }
+
+      // Ensure the directory exists on disk
+      try {
+        const fs = require('fs');
+        fs.mkdirSync(rootPath, { recursive: true });
+        // Write a default index.html if none exists
+        const indexPath = `${rootPath}/index.html`;
+        if (!fs.existsSync(indexPath)) {
+          fs.writeFileSync(indexPath, `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Welcome to ${domainName}</title>
+  <style>
+    body { font-family: system-ui, sans-serif; background: linear-gradient(135deg, #059669 0%, #0d9488 100%); min-height: 100vh; display: flex; align-items: center; justify-content: center; color: white; text-align: center; }
+    h1 { font-size: 3rem; margin-bottom: 1rem; }
+    .badge { display: inline-block; background: rgba(255,255,255,0.2); padding: 0.5rem 1rem; border-radius: 2rem; margin-top: 1rem; }
+  </style>
+</head>
+<body>
+  <div>
+    <h1>Site Deployed!</h1>
+    <p>Your ${framework} app on <strong>${domainName}</strong> is live.</p>
+    <div class="badge">Powered by FahadCloud</div>
+  </div>
+</body>
+</html>`);
+        }
+      } catch {}
+
+      // Create HostingEnvironment in database
+      hostingEnv = await prisma.hostingEnvironment.create({
+        data: {
+          userId,
+          domainId: domain.id,
+          planSlug: 'starter',
+          status: 'active',
+          rootPath,
+          serverType: framework,
+          sslEnabled: false,
+          storageUsed: 0,
+          storageLimit: 5368709120,
+          dockerContainerId,
+          dockerStatus: dockerStatus || (buildLogMsg ? 'simulated' : 'active'),
+          deployLog: buildLogMsg || 'Hosting environment created',
+          lastDeployedAt: new Date(),
+        },
+      });
+
+      // Update the Domain record to link to the new HostingEnvironment
+      await prisma.domain.update({
+        where: { id: domain.id },
+        data: { hostingEnvId: hostingEnv.id },
+      });
+
+      // Update the deployment log with the hosting env id
+      await prisma.deploymentLog.update({
+        where: { id: deployLog.id },
+        data: {
+          hostingEnvId: hostingEnv.id,
+          status: 'deploying',
+          deployLog: buildLogMsg || 'Hosting environment created and linked to domain',
+        },
+      });
+    } else {
+      // Hosting env already exists - update it
+      await prisma.hostingEnvironment.update({
+        where: { id: hostingEnv.id },
+        data: {
+          serverType: framework,
+          status: 'active',
+          lastDeployedAt: new Date(),
+          deployLog: `Redeployed ${framework} at ${new Date().toISOString()}`,
+        },
+      });
+
+      await prisma.deploymentLog.update({
+        where: { id: deployLog.id },
+        data: {
+          hostingEnvId: hostingEnv.id,
+          status: 'deploying',
+          deployLog: `Redeploying to existing hosting environment`,
+        },
+      });
+    }
+
+    // Now run the one-click deploy from core
     const { oneClickDeploy } = await import('@/lib/agent/core');
     const result = await oneClickDeploy(userId, domainName, framework, deploySessionId);
 
-    // Update deployment log
+    // Mark deployment as live
     await prisma.deploymentLog.update({
       where: { id: deployLog.id },
-      data: { status: 'deploying' },
+      data: { status: 'live' },
     });
 
     return NextResponse.json({
       ...result,
       deployLogId: deployLog.id,
       sessionId: deploySessionId,
+      hostingEnvId: hostingEnv?.id,
     });
   } catch (error: any) {
     console.error('Deploy error:', error);

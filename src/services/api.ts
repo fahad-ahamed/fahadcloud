@@ -105,6 +105,15 @@ class ApiClient {
     return this.request(`/api/domains/dns?recordId=${recordId}`, { method: 'DELETE' });
   }
 
+  // SSL
+  async installSsl(domainName: string) {
+    return this.request('/api/domains/ssl', { method: 'POST', body: JSON.stringify({ domainName }) });
+  }
+
+  async getSslStatus(domainName: string) {
+    return this.request(`/api/domains/ssl?domain=${domainName}`);
+  }
+
   // Hosting
   async getHostingPlans() {
     return this.request('/api/hosting');
