@@ -16,7 +16,7 @@ interface LoginFormProps {
   onLogin: () => void;
   onSwitchToRegister: () => void;
   onSwitchToVerify: () => void;
-  onSwitchToForgotPassword?: () => void;
+  onSwitchToForgotPassword: () => void;
 }
 
 export default function LoginForm({

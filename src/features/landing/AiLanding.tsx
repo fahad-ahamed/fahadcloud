@@ -476,6 +476,21 @@ export default function AiLanding({ onGetStarted, onBack }: AiLandingProps) {
           setRegOtpLoading(false);
         }}
       />
+
+      <ForgotPasswordDialog
+        open={showForgotPassword}
+        onOpenChange={setShowForgotPassword}
+        onSwitchToLogin={() => { setShowForgotPassword(false); setShowLogin(true); }}
+        onSwitchToReset={(email) => { setShowForgotPassword(false); setResetEmail(email); setShowResetPassword(true); }}
+      />
+
+      <ResetPasswordDialog
+        open={showResetPassword}
+        onOpenChange={setShowResetPassword}
+        resetEmail={resetEmail}
+        onSwitchToLogin={() => { setShowResetPassword(false); setShowLogin(true); }}
+        onSwitchToForgot={() => { setShowResetPassword(false); setShowForgotPassword(true); }}
+      />
     </div>
   );
 }

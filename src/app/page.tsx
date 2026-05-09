@@ -39,7 +39,7 @@ function getNavItems(user: User | null) {
   return [
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
     { id: 'domains', label: 'Domains', icon: Globe },
-    { id: 'ai_agent', label: 'AI Agent', icon: Brain, badge: '13 Agents' },
+    { id: 'ai_agent', label: 'AI Agent', icon: Brain, badge: '14 Agents' },
     { id: 'ai_cloud', label: 'Cloud Intel', icon: Radar },
     { id: 'deploy', label: 'Deploy', icon: Rocket },
     { id: 'monitoring', label: 'Monitor', icon: Monitor },
@@ -252,6 +252,24 @@ function FahadCloudAppInner() {
     setAdminVerifyLoading(false)
   }
 
+
+  const doAdminPasswordLogin = async (email: string, password: string) => {
+    setAdminError('')
+    try {
+      await login(email, password)
+      setShowAdminLogin(false)
+      setAdminOtpSent(false)
+      setAdminOtp('')
+      setAdminEmail('')
+      setAdminError('')
+      await checkAuth()
+      setCurrentView('dashboard')
+      toast.success('Admin login successful!')
+    } catch (e: any) {
+      setAdminError(e.message || 'Invalid credentials')
+    }
+  }
+
   const doLogout = () => { logout(); setCurrentView('landing'); agentHook.startNewChat(); toast.success('Logged out') }
 
   // ============ ACTION HANDLERS ============
@@ -354,6 +372,7 @@ function FahadCloudAppInner() {
         showForgotPassword={showForgotPassword} setShowForgotPassword={setShowForgotPassword}
         showResetPassword={showResetPassword} setShowResetPassword={setShowResetPassword}
         resetEmail={resetEmail} setResetEmail={setResetEmail}
+        onAdminPasswordLogin={doAdminPasswordLogin}
         onNavigate={setCurrentView}
       />
     )
