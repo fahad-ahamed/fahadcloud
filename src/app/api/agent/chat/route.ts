@@ -159,7 +159,7 @@ export async function POST(request: NextRequest) {
           agentId: t.agentId,
         })),
         conclusion: result.reasoningChain.conclusion,
-        totalConfidence: result.reasoningChain.totalConfidence,
+        confidence: result.reasoningChain.confidence,
       } : null,
     });
   } catch (error: any) {

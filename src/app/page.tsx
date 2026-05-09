@@ -146,6 +146,11 @@ function FahadCloudAppInner() {
   const [deleteAccountLoading, setDeleteAccountLoading] = useState(false)
   const [showReasoning, setShowReasoning] = useState(false)
 
+  // Forgot Password / Reset Password state
+  const [showForgotPassword, setShowForgotPassword] = useState(false)
+  const [showResetPassword, setShowResetPassword] = useState(false)
+  const [resetEmail, setResetEmail] = useState('')
+
   // ============ DATA LOADERS ============
   const loadDashboard = useCallback(async () => {
     if (!user) return

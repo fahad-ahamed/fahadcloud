@@ -110,6 +110,7 @@ export default function LandingPage({
   onAdminRequestOtp, onAdminVerifyOtp,
   onVerifyRegOtp, onResendVerification,
   onRequestActionVerify, onVerifyAndDeleteAccount,
+  onAdminPasswordLogin,
   showForgotPassword, setShowForgotPassword,
   showResetPassword, setShowResetPassword,
   resetEmail, setResetEmail,

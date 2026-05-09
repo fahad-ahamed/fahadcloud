@@ -548,3 +548,31 @@ export interface ClusterNode {
   memory: number;
   containers: number;
 }
+
+
+// Additional types needed by agent modules
+export interface AuditLog {
+  id: string;
+  action: string;
+  userId: string;
+  details: any;
+  timestamp: Date;
+}
+
+export type MemoryType = 'short_term' | 'long_term' | 'episodic' | 'semantic';
+
+export interface MemoryEntry {
+  id: string;
+  type: MemoryType;
+  content: string;
+  metadata: any;
+  timestamp: Date;
+  relevance: number;
+}
+
+export interface MemoryQuery {
+  type?: MemoryType;
+  limit?: number;
+  minRelevance?: number;
+  search?: string;
+}
