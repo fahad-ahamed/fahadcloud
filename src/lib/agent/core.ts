@@ -474,8 +474,7 @@ function getServerType(framework: string): string {
 
 async function callLlm(systemPrompt: string, userMessage: string, history: ConversationMessage[]): Promise<string> {
   try {
-    const ZAI = (await import('z-ai-web-dev-sdk')).default;
-    const zai = await ZAI.create();
+    const { aiChat } = await import('./ai-engine');
     
     const messages: any[] = [
       { role: 'system', content: systemPrompt },
@@ -483,13 +482,9 @@ async function callLlm(systemPrompt: string, userMessage: string, history: Conve
       { role: 'user', content: userMessage },
     ];
     
-    const completion = await zai.chat.completions.create({
-      messages,
-      temperature: 0.7,
-      max_tokens: 2000,
-    });
+    const result = await aiChat(messages, { temperature: 0.7, maxTokens: 2000 });
     
-    return completion.choices?.[0]?.message?.content || '';
+    return result.message || '';
   } catch (error: any) {
     console.error('LLM call failed:', error.message);
     return ''; // Return empty to fall back to rule-based

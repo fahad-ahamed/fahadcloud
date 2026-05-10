@@ -1,3 +1,4 @@
+// ============ ADMIN DATABASE MANAGER - PostgreSQL Compatible ============
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAdmin, authErrorResponse } from '@/lib/middleware/auth.middleware';
 import { db } from '@/lib/db';
@@ -5,7 +6,7 @@ import { db } from '@/lib/db';
 // Fix BigInt serialization
 (BigInt.prototype as any).toJSON = function() { return this.toString(); };
 
-// GET /api/admin/database?action=tables|select|count
+// GET /api/admin/database?action=tables|select|count|stats
 export async function GET(request: NextRequest) {
   try {
     const auth = await requireAdmin(request);
@@ -15,8 +16,14 @@ export async function GET(request: NextRequest) {
     const action = searchParams.get('action') || 'tables';
 
     if (action === 'tables') {
-      // Get all table names from SQLite
-      const result = await db.$queryRaw`SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE '_prisma%' AND name NOT LIKE 'sqlite%' ORDER BY name`;
+      // Get all table names from PostgreSQL
+      const result = await db.$queryRaw`
+        SELECT table_name as name 
+        FROM information_schema.tables 
+        WHERE table_schema = 'public' 
+        AND table_type = 'BASE TABLE'
+        ORDER BY table_name
+      `;
       const tables = (result as any[]).map((r: any) => r.name);
       return NextResponse.json({ tables });
     }
@@ -31,30 +38,48 @@ export async function GET(request: NextRequest) {
       }
 
       // Validate table name (prevent SQL injection)
-      const validTables = await db.$queryRaw`SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE '_prisma%' AND name NOT LIKE 'sqlite%'`;
+      const validTables = await db.$queryRaw`
+        SELECT table_name as name FROM information_schema.tables 
+        WHERE table_schema = 'public' AND table_type = 'BASE TABLE'
+      `;
       const tableNames = (validTables as any[]).map((r: any) => r.name);
       if (!tableNames.includes(table)) {
         return NextResponse.json({ error: 'Invalid table name' }, { status: 400 });
       }
 
-      // Get column info
-      const columnInfo = await db.$queryRawUnsafe(`PRAGMA table_info("${table}")`);
-      const columns = (columnInfo as any[]).map((c: any) => c.name);
+      // Get column info from PostgreSQL
+      const columnInfo = await db.$queryRaw`
+        SELECT column_name, data_type, is_nullable, column_default
+        FROM information_schema.columns 
+        WHERE table_schema = 'public' AND table_name = ${table}
+        ORDER BY ordinal_position
+      `;
+      const columns = (columnInfo as any[]).map((c: any) => c.column_name);
 
       // Get total count
       const countResult = await db.$queryRawUnsafe(`SELECT COUNT(*) as count FROM "${table}"`);
-      const total = (countResult as any[])[0]?.count || 0;
+      const total = Number((countResult as any[])[0]?.count || 0);
 
-      // Get rows with pagination
+      // Get rows with pagination (PostgreSQL syntax)
       const offset = (page - 1) * limit;
-      const rows = await db.$queryRawUnsafe(`SELECT * FROM "${table}" LIMIT ${limit} OFFSET ${offset}`);
+      const rows = await db.$queryRawUnsafe(`SELECT * FROM "${table}" ORDER BY "createdAt" DESC NULLS LAST LIMIT ${limit} OFFSET ${offset}`);
+
+      // Convert BigInt values to strings for serialization
+      const serializedRows = (rows as any[]).map(row => {
+        const serialized: any = {};
+        for (const [key, value] of Object.entries(row)) {
+          serialized[key] = typeof value === 'bigint' ? value.toString() : value;
+        }
+        return serialized;
+      });
 
       return NextResponse.json({
-        rows,
+        rows: serializedRows,
         columns,
         total,
         page,
         limit,
+        columnInfo,
       });
     }
 
@@ -64,7 +89,28 @@ export async function GET(request: NextRequest) {
         return NextResponse.json({ error: 'Table name is required' }, { status: 400 });
       }
       const result = await db.$queryRawUnsafe(`SELECT COUNT(*) as count FROM "${table}"`);
-      return NextResponse.json({ count: (result as any[])[0]?.count || 0 });
+      return NextResponse.json({ count: Number((result as any[])[0]?.count || 0) });
+    }
+
+    if (action === 'stats') {
+      // Get database statistics
+      const tableList = await db.$queryRaw`
+        SELECT table_name as name FROM information_schema.tables 
+        WHERE table_schema = 'public' AND table_type = 'BASE TABLE'
+      `;
+      const tables = (tableList as any[]).map((r: any) => r.name);
+      
+      const stats: any = {};
+      for (const table of tables) {
+        try {
+          const count = await db.$queryRawUnsafe(`SELECT COUNT(*) as count FROM "${table}"`);
+          stats[table] = Number((count as any[])[0]?.count || 0);
+        } catch {
+          stats[table] = -1;
+        }
+      }
+      
+      return NextResponse.json({ stats, tables });
     }
 
     return NextResponse.json({ error: 'Unknown action' }, { status: 400 });
@@ -84,7 +130,10 @@ export async function POST(request: NextRequest) {
     const { action, table, id, values, sql } = body;
 
     // Validate table name
-    const validTables = await db.$queryRaw`SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE '_prisma%' AND name NOT LIKE 'sqlite%'`;
+    const validTables = await db.$queryRaw`
+      SELECT table_name as name FROM information_schema.tables 
+      WHERE table_schema = 'public' AND table_type = 'BASE TABLE'
+    `;
     const tableNames = (validTables as any[]).map((r: any) => r.name);
 
     if (action === 'query') {
@@ -101,7 +150,15 @@ export async function POST(request: NextRequest) {
       try {
         const result = await db.$queryRawUnsafe(sql);
         if (Array.isArray(result)) {
-          return NextResponse.json({ rows: result, count: result.length });
+          // Serialize BigInt
+          const serialized = result.map(row => {
+            const s: any = {};
+            for (const [key, value] of Object.entries(row)) {
+              s[key] = typeof value === 'bigint' ? value.toString() : value;
+            }
+            return s;
+          });
+          return NextResponse.json({ rows: serialized, count: serialized.length });
         }
         return NextResponse.json({ message: 'Query executed successfully', result });
       } catch (sqlError: any) {
@@ -118,6 +175,8 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ error: 'Values object is required' }, { status: 400 });
       }
       const cols = Object.keys(values).filter(k => values[k] !== undefined && values[k] !== '');
+      const colStr = cols.map(c => `"${c}"`).join(', ');
+      const valPlaceholders = cols.map((_, i) => `$${i + 1}`).join(', ');
       const vals = cols.map(k => {
         const v = values[k];
         if (v === 'null' || v === null) return null;
@@ -126,10 +185,8 @@ export async function POST(request: NextRequest) {
         if (!isNaN(Number(v)) && v !== '') return Number(v);
         return v;
       });
-      const colStr = cols.map(c => `"${c}"`).join(', ');
-      const valStr = vals.map(v => v === null ? 'NULL' : typeof v === 'number' ? v : typeof v === 'boolean' ? (v ? 1 : 0) : `'${String(v).replace(/'/g, "''")}'`).join(', ');
       
-      await db.$executeRawUnsafe(`INSERT INTO "${table}" (${colStr}) VALUES (${valStr})`);
+      await db.$executeRawUnsafe(`INSERT INTO "${table}" (${colStr}) VALUES (${valPlaceholders})`, ...vals);
       return NextResponse.json({ message: 'Row inserted successfully' });
     }
 
@@ -142,9 +199,9 @@ export async function POST(request: NextRequest) {
       }
       const sets = Object.entries(values)
         .filter(([k]) => k !== 'id')
-        .map(([k, v]) => {
-          if (v === null || v === 'null') return `"${k}" = NULL`;
-          if (typeof v === 'boolean') return `"${k}" = ${v ? 1 : 0}`;
+        .map(([k, v], i) => {
+          if (v === 'null' || v === null) return `"${k}" = NULL`;
+          if (typeof v === 'boolean') return `"${k}" = ${v ? 'true' : 'false'}`;
           if (typeof v === 'number') return `"${k}" = ${v}`;
           return `"${k}" = '${String(v).replace(/'/g, "''")}'`;
         })
@@ -164,7 +221,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ error: 'Unknown action' }, { status: 400 });
   } catch (error: any) {
-    console.error('Admin database write error:', error);
+    console.error('Admin database POST error:', error);
     return NextResponse.json({ error: error.message || 'Database operation failed' }, { status: 500 });
   }
 }

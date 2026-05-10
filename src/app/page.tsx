@@ -32,6 +32,9 @@ import TerminalView from '@/features/terminal/TerminalView'
 import ProfileView from '@/features/profile/ProfileView'
 import AdminView from '@/features/admin/AdminView'
 import SuperAdminView from '@/features/admin/SuperAdminView'
+import DatabaseDashboard from '@/features/database/DatabaseDashboard'
+import AILearningPanel from '@/features/learning/AILearningPanel'
+import AgentMonitorDashboard from '@/features/agent-monitor/AgentMonitorDashboard'
 
 const agentIconMap: Record<string, any> = { Rocket, Shield, Monitor, AlertTriangle, Server, Database, Zap, RotateCcw, TrendingUp, Globe, CreditCard, Brain }
 
@@ -42,9 +45,12 @@ function getNavItems(user: User | null) {
   if (user.role === 'admin') {
     return [
       { id: 'admin', label: 'Admin Panel', icon: Shield },
-      { id: 'dashboard', label: 'My Dashboard', icon: LayoutDashboard },
+      { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
       { id: 'domains', label: 'My Domains', icon: Globe },
       { id: 'ai_agent', label: 'AI Agent', icon: Brain, badge: '14' },
+      { id: 'agent_monitor', label: 'Agent Monitor', icon: Monitor },
+      { id: 'ai_learn', label: 'AI Learning', icon: Brain },
+      { id: 'database', label: 'Database', icon: Database },
       { id: 'hosting', label: 'My Hosting', icon: Server },
       { id: 'ai_terminal', label: 'Terminal', icon: Terminal },
       { id: 'profile', label: 'Profile', icon: UserCircle },
@@ -56,6 +62,9 @@ function getNavItems(user: User | null) {
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
     { id: 'domains', label: 'Domains', icon: Globe },
     { id: 'ai_agent', label: 'AI Agent', icon: Brain, badge: '14 Agents' },
+    { id: 'agent_monitor', label: 'Agent Monitor', icon: Monitor },
+    { id: 'ai_learn', label: 'AI Learning', icon: Brain },
+    { id: 'database', label: 'Database', icon: Database },
     { id: 'ai_cloud', label: 'Cloud Intel', icon: Radar },
     { id: 'deploy', label: 'Deploy', icon: Rocket },
     { id: 'monitoring', label: 'Monitor', icon: Monitor },
@@ -63,7 +72,7 @@ function getNavItems(user: User | null) {
     { id: 'dns', label: 'DNS', icon: Lock },
     { id: 'ssl', label: 'SSL', icon: Lock },
     { id: 'storage', label: 'Storage', icon: HardDrive },
-    { id: 'payments', label: 'Orders', icon: ShoppingCart },
+    { id: 'payments', label: 'My Orders', icon: ShoppingCart },
     { id: 'ai_terminal', label: 'Terminal', icon: Terminal },
     { id: 'profile', label: 'Profile', icon: UserCircle },
   ]
@@ -443,20 +452,23 @@ function FahadCloudAppInner() {
         </header>
 
         <div className="p-4 md:p-6 max-w-7xl mx-auto">
-          {currentView === 'dashboard' && <DashboardView user={user} domains={domainHook.domains} hostingEnvs={hostingEnvs} dashboardLoading={dashboardLoading} onNavigate={setCurrentView} />}
-          {currentView === 'domains' && <DomainsView searchDomain={searchDomainStr} setSearchDomain={setSearchDomainStr} searchResult={domainHook.searchResult} searching={domainHook.searching} domains={domainHook.domains} onDomainSearch={doDomainSearch} onRegisterDomain={doRegisterDomain} />}
+          {currentView === 'dashboard' && <DashboardView user={user} domains={domainHook.domains as any} hostingEnvs={hostingEnvs as any} dashboardLoading={dashboardLoading} onNavigate={setCurrentView} />}
+          {currentView === 'domains' && <DomainsView searchDomain={searchDomainStr} setSearchDomain={setSearchDomainStr} searchResult={domainHook.searchResult} searching={domainHook.searching} domains={domainHook.domains as any} onDomainSearch={doDomainSearch} onRegisterDomain={doRegisterDomain} />}
           {currentView === 'ai_agent' && <AgentChatView agentMessages={agentHook.messages} agentInput={agentHook.input} setAgentInput={agentHook.setInput} agentLoading={agentHook.loading} agentThinking={agentHook.thinking} agentSuggestions={agentHook.suggestions} orchestrationPlan={agentHook.orchestrationPlan} reasoningChain={agentHook.reasoningChain} showReasoning={showReasoning} setShowReasoning={setShowReasoning} activeAgents={agentHook.activeAgents} agentTasks={agentHook.tasks} onSendMessage={agentHook.sendMessage} onNewChat={agentHook.startNewChat} onApproveTask={approveTask} onCancelTask={cancelTask} onRefreshHistory={agentHook.loadHistory} />}
-          {currentView === 'ai_cloud' && <AgentCloudIntel allAgents={agentHook.allAgents} systemOverview={systemOverview} securityStatus={securityStatus} predictions={predictions} agentIconMap={agentIconMap} />}
-          {currentView === 'deploy' && <DeployView deployDomain={deployDomain} setDeployDomain={setDeployDomain} deployFramework={deployFramework} setDeployFramework={setDeployFramework} deploying={deploying} deployLog={deployLog} domains={domainHook.domains} onDeploy={startDeploy} onNavigate={setCurrentView} />}
+          {currentView === 'ai_cloud' && <AgentCloudIntel />}
+          {currentView === 'deploy' && <DeployView deployDomain={deployDomain} setDeployDomain={setDeployDomain} deployFramework={deployFramework} setDeployFramework={setDeployFramework} deploying={deploying} deployLog={deployLog} domains={domainHook.domains as any} onDeploy={startDeploy} onNavigate={setCurrentView} />}
           {currentView === 'monitoring' && <MonitoringView monData={monitoringHook.data} monLoading={monitoringHook.loading} onRefresh={monitoringHook.loadMonitoring} />}
-          {currentView === 'hosting' && <HostingView hostingEnvs={hostingEnvs} onNavigate={setCurrentView} onRestartEnv={restartHostingEnv} />}
-          {currentView === 'dns' && <DnsManager domains={domainHook.domains} dnsDomain={dnsDomain} setDnsDomain={setDnsDomain} dnsRecords={dnsRecords} dnsLoading={dnsLoading} newDnsRecord={newDnsRecord} setNewDnsRecord={setNewDnsRecord} onLoadDnsRecords={loadDnsRecords} onAddDnsRecord={addDnsRecord} onNavigate={setCurrentView} />}
-          {currentView === 'ssl' && <SslView domains={domainHook.domains} onInstallSsl={installSsl} />}
+          {currentView === 'hosting' && <HostingView hostingEnvs={hostingEnvs as any} onNavigate={setCurrentView} onRestartEnv={restartHostingEnv} />}
+          {currentView === 'dns' && <DnsManager domains={domainHook.domains as any} dnsDomain={dnsDomain} setDnsDomain={setDnsDomain} dnsRecords={dnsRecords} dnsLoading={dnsLoading} newDnsRecord={newDnsRecord} setNewDnsRecord={setNewDnsRecord} onLoadDnsRecords={loadDnsRecords} onAddDnsRecord={addDnsRecord} onNavigate={setCurrentView} />}
+          {currentView === 'ssl' && <SslView domains={domainHook.domains as any} onInstallSsl={installSsl} />}
           {currentView === 'storage' && <StorageView user={user} files={files} uploading={uploading} storageLoading={storageLoading} onUpload={uploadFiles} onDeleteFile={() => {}} />}
           {currentView === 'payments' && <PaymentsView paymentOrder={paymentOrder} bkashNumber={bkashNumber} setBkashNumber={setBkashNumber} bkashTrxId={bkashTrxId} setBkashTrxId={setBkashTrxId} paymentProcessing={paymentProcessing} orders={orders} ordersLoading={ordersLoading} onSubmitPayment={submitPayment} />}
           {currentView === 'ai_terminal' && <TerminalView termHistory={termHistory} termInput={termInput} setTermInput={setTermInput} termRunning={termRunning} onExecute={executeCommand} isAdmin={user?.role === 'admin'} />}
           {currentView === 'profile' && <ProfileView user={user} profileEditing={profileEditing} setProfileEditing={setProfileEditing} profileForm={profileForm} setProfileForm={setProfileForm} profileSaving={profileSaving} showChangePassword={showChangePassword} setShowChangePassword={setShowChangePassword} passwordForm={passwordForm} setPasswordForm={setPasswordForm} passwordSaving={false} showCurrentPassword={showCurrentPassword} setShowCurrentPassword={setShowCurrentPassword} showNewPassword={showNewPassword} setShowNewPassword={setShowNewPassword} actionVerifyStep={actionVerifyStep} setActionVerifyStep={setActionVerifyStep} actionVerifyOtp={actionVerifyOtp} setActionVerifyOtp={setActionVerifyOtp} actionVerifyLoading={actionVerifyLoading} actionVerifyAction={actionVerifyAction} onSaveProfile={saveProfile} onChangePassword={changePassword} onLogout={doLogout} onDeleteAccount={() => setShowDeleteAccount(true)} />}
           {currentView === 'admin' && user.role === 'admin' && <SuperAdminView onNavigate={setCurrentView} />}
+          {currentView === 'database' && <DatabaseDashboard />}
+          {currentView === 'ai_learn' && <AILearningPanel />}
+          {currentView === 'agent_monitor' && <AgentMonitorDashboard />}
         </div>
       </main>
     </div>

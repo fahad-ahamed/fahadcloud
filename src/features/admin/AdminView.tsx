@@ -881,7 +881,7 @@ export default function AdminView({
 
         {/* Live Monitor Tab */}
         <TabsContent value="live_monitor" className="mt-4">
-          <ActivityTab />
+          <Activity />
         </TabsContent>
 
         <TabsContent value="users" className="mt-4 page-transition">

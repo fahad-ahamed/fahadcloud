@@ -1,5 +1,5 @@
 'use client'
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Globe, Server, HardDrive, CreditCard, TrendingUp, Search, Brain, Rocket, Monitor, Lock, Loader2 } from 'lucide-react';
@@ -18,6 +18,23 @@ interface DashboardViewProps {
 export default function DashboardView({
   user, domains, hostingEnvs, dashboardLoading, onNavigate,
 }: DashboardViewProps) {
+  // AI Agent stats
+  const [aiStats, setAiStats] = useState<{ activeAgents: number; recentActivity: number } | null>(null);
+
+  useEffect(() => {
+    fetch('/api/agent/monitor')
+      .then(res => res.ok ? res.json() : null)
+      .then(data => {
+        if (data) {
+          const agents = data.agents || [];
+          const activeAgents = agents.filter((a: any) => a.status === 'active' || a.status === 'running').length;
+          const recentActivity = agents.reduce((sum: number, a: any) => sum + (a.tasksCompleted || 0), 0);
+          setAiStats({ activeAgents, recentActivity });
+        }
+      })
+      .catch(() => {});
+  }, []);
+
   return (
     <div className="space-y-6">
       {dashboardLoading && (
@@ -47,6 +64,33 @@ export default function DashboardView({
           </Card>
         ))}
       </div>
+
+      {/* AI Agents Card */}
+      <Card className="bg-gradient-to-r from-violet-500 to-purple-600 border-0 shadow-md animate-slide-up">
+        <CardContent className="p-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="w-12 h-12 rounded-xl bg-white/20 flex items-center justify-center">
+                <Brain className="w-6 h-6 text-white" />
+              </div>
+              <div>
+                <h3 className="text-white font-semibold text-sm">AI Agents</h3>
+                <div className="flex items-center gap-3 mt-1">
+                  <span className="text-white/80 text-xs">{aiStats?.activeAgents ?? '...'} active agents</span>
+                  <span className="text-white/60 text-xs">|</span>
+                  <span className="text-white/80 text-xs">{aiStats?.recentActivity ?? '...'} recent tasks</span>
+                </div>
+              </div>
+            </div>
+            <button
+              onClick={() => onNavigate('ai_agent')}
+              className="px-4 py-2 bg-white/20 hover:bg-white/30 rounded-lg text-white text-sm font-medium transition flex items-center gap-1.5"
+            >
+              <Rocket className="w-4 h-4" /> View AI Agents
+            </button>
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Quick Actions */}
       <Card className="bg-white border-slate-200 shadow-sm animate-slide-up">

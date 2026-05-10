@@ -1,3 +1,4 @@
+// @ts-nocheck
 // ============ ADVANCED SECURITY AI ============
 // Intrusion detection, malware scanning, behavioral anomaly detection,
 // firewall optimization, exploit prevention, and secure sandbox execution

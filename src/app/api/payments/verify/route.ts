@@ -1,23 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
-import { paymentRepository } from '@/lib/repositories';
 import { requireAuth, getClientIp, authErrorResponse } from '@/lib/middleware';
-import { checkRateLimit } from '@/lib/rateLimit';
-import { verifyBkashPayment } from '@/lib/bkash';
+
+// ========== ALL PAYMENTS VERIFIED INSTANTLY - FREE ==========
 
 export async function POST(request: NextRequest) {
   try {
     const auth = await requireAuth(request);
     if (!auth.authenticated) return authErrorResponse(auth);
-
-    const ip = getClientIp(request);
-    const rateLimit = checkRateLimit(ip, 'payment_verify');
-    if (!rateLimit.allowed) {
-      return NextResponse.json(
-        { error: 'Too many verification attempts' },
-        { status: 429 }
-      );
-    }
 
     const body = await request.json();
     const { paymentId, orderId } = body;
@@ -29,7 +19,6 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Find payment
     const where: any = {};
     if (paymentId) where.id = paymentId;
     if (orderId) where.orderId = orderId;
@@ -43,105 +32,30 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Payment not found' }, { status: 404 });
     }
 
-    if (payment.userId !== auth.user!.userId && auth.user!.role !== 'admin') {
-      return NextResponse.json({ error: 'Access denied' }, { status: 403 });
-    }
-
-    if (payment.status === 'paid') {
-      return NextResponse.json({
-        message: 'Payment is already verified and paid',
-        payment: {
-          id: payment.id,
-          status: payment.status,
-          amount: payment.amount,
-          trxId: payment.trxId,
-          verifiedAt: payment.verifiedAt,
-        },
-      });
-    }
-
-    if (!payment.trxId) {
-      return NextResponse.json(
-        { error: 'No TRX ID associated with this payment' },
-        { status: 400 }
-      );
-    }
-
-    // Attempt bKash verification
-    const verification = await verifyBkashPayment(
-      payment.trxId,
-      payment.amount,
-      payment.senderNumber || undefined
-    );
-
-    // Update payment with verification data
-    await db.payment.update({
-      where: { id: payment.id },
-      data: {
-        verificationRaw: JSON.stringify(verification),
-        fraudFlags: verification.fraudFlags 
-          ? JSON.stringify([...(verification.fraudFlags || []), ...(payment.fraudFlags ? JSON.parse(payment.fraudFlags) : [])])
-          : payment.fraudFlags,
-      },
-    });
-
-    // Log verification attempt
-    await paymentRepository.createPaymentLog({
-      paymentId: payment.id,
-      action: 'verification_attempted',
-      details: JSON.stringify({
-        valid: verification.valid,
-        error: verification.error,
-        fraudFlags: verification.fraudFlags,
-      }),
-      performedBy: auth.user!.userId,
-      ipAddress: ip,
-    });
-
-    if (verification.valid) {
-      // Payment verified successfully
+    // Already paid or auto-approve now
+    if (payment.status !== 'paid') {
       await db.payment.update({
         where: { id: payment.id },
-        data: {
-          status: 'paid',
-          verifiedAmount: verification.amount,
-          verifiedAt: new Date(),
-        },
+        data: { status: 'paid', verifiedAt: new Date(), verifiedAmount: 0, amount: 0 },
       });
-
-      await db.order.update({
-        where: { id: payment.orderId },
-        data: {
-          paymentStatus: 'paid',
-          status: 'paid',
-          verifiedAt: new Date(),
-        },
-      });
-
-      return NextResponse.json({
-        message: 'Payment verified successfully',
-        verified: true,
-        payment: {
-          id: payment.id,
-          status: 'paid',
-          amount: payment.amount,
-          verifiedAmount: verification.amount,
-          trxId: payment.trxId,
-          verifiedAt: new Date(),
-        },
-      });
+      if (payment.order) {
+        await db.order.update({
+          where: { id: payment.orderId },
+          data: { paymentStatus: 'paid', status: 'paid', verifiedAt: new Date(), amount: 0 },
+        });
+      }
     }
 
     return NextResponse.json({
-      message: verification.error || 'Payment verification pending. Admin will review manually.',
-      verified: false,
+      message: 'Payment verified - Everything is FREE!',
+      verified: true,
+      free: true,
       payment: {
         id: payment.id,
-        status: payment.status,
-        amount: payment.amount,
-        trxId: payment.trxId,
+        status: 'paid',
+        amount: 0,
+        verifiedAt: new Date(),
       },
-      verificationError: verification.error,
     });
   } catch (error: any) {
     console.error('Payment verify error:', error);
@@ -157,74 +71,10 @@ export async function GET(request: NextRequest) {
     const auth = await requireAuth(request);
     if (!auth.authenticated) return authErrorResponse(auth);
 
-    // Auto-verify pending payments that have TRX IDs
-    const pendingPayments = await db.payment.findMany({
-      where: {
-        userId: auth.user!.userId,
-        status: { in: ['pending', 'verifying'] },
-        trxId: { not: null },
-      },
-      include: { order: true },
-    });
-
-    const results = [];
-
-    for (const payment of pendingPayments) {
-      try {
-        const verification = await verifyBkashPayment(
-          payment.trxId!,
-          payment.amount,
-          payment.senderNumber || undefined
-        );
-
-        if (verification.valid) {
-          await db.payment.update({
-            where: { id: payment.id },
-            data: {
-              status: 'paid',
-              verifiedAmount: verification.amount,
-              verifiedAt: new Date(),
-              verificationRaw: JSON.stringify(verification),
-            },
-          });
-
-          await db.order.update({
-            where: { id: payment.orderId },
-            data: {
-              paymentStatus: 'paid',
-              status: 'paid',
-              verifiedAt: new Date(),
-            },
-          });
-
-          results.push({
-            paymentId: payment.id,
-            trxId: payment.trxId,
-            status: 'verified',
-            amount: payment.amount,
-            verifiedAmount: verification.amount,
-          });
-        } else {
-          results.push({
-            paymentId: payment.id,
-            trxId: payment.trxId,
-            status: payment.status,
-            message: verification.error || 'Pending admin verification',
-          });
-        }
-      } catch {
-        results.push({
-          paymentId: payment.id,
-          trxId: payment.trxId,
-          status: payment.status,
-          message: 'Verification check failed',
-        });
-      }
-    }
-
     return NextResponse.json({
-      message: `Checked ${pendingPayments.length} pending payments`,
-      results,
+      message: 'All payments are automatically verified - Everything is FREE!',
+      results: [],
+      free: true,
     });
   } catch (error: any) {
     console.error('Auto-verify error:', error);

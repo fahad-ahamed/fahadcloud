@@ -123,7 +123,7 @@ export default function DeployView({
             <CardTitle className="text-sm">Deployment Log</CardTitle>
           </CardHeader>
           <CardContent>
-            <pre className="bg-slate-900 p-4 rounded-lg text-xs text-emerald-400 font-mono overflow-auto max-h-60">{deployLog}</pre>
+            <pre className="bg-slate-800 p-4 rounded-lg text-xs text-emerald-400 font-mono overflow-auto max-h-60">{deployLog}</pre>
           </CardContent>
         </Card>
       )}

@@ -15,7 +15,8 @@ import {
   CheckCircle, XCircle, AlertCircle, Send, Mail, Phone, MapPin,
   Building, CreditCard, Lock, Clock, Download, Upload, X, Key,
   Pause, ArrowUpRight, UserPlus, UserX, UserCheck, MoreHorizontal,
-  Pencil, ToggleLeft, ToggleRight, Wifi, WifiOff, HardHat, Wrench, LayoutDashboard} from 'lucide-react';
+  Pencil, ToggleLeft, ToggleRight, Wifi, WifiOff, HardHat, Wrench, LayoutDashboard,
+  Bug, BookOpen, ScanLine, Sparkles, Bot, ShieldCheck, GraduationCap, BarChart3} from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface SuperAdminViewProps {
@@ -449,7 +450,7 @@ function DatabaseManagerTab() {
         </TabsContent>
 
         <TabsContent value="sql" className="space-y-3">
-          <Card className="bg-slate-950 border-slate-800">
+          <Card className="bg-slate-50 border-slate-200">
             <CardContent className="p-3">
               <textarea
                 className="w-full h-32 font-mono text-xs text-green-400 bg-transparent resize-none outline-none"
@@ -1189,7 +1190,7 @@ function SystemControlTab() {
           </div>
         </CardHeader>
         <CardContent>
-          <pre className="bg-slate-950 text-green-400 text-[10px] p-3 rounded-lg max-h-[40vh] overflow-auto font-mono">{logs || 'Select a log source and click refresh'}</pre>
+          <pre className="bg-slate-800 text-green-400 text-[10px] p-3 rounded-lg max-h-[40vh] overflow-auto font-mono">{logs || 'Select a log source and click refresh'}</pre>
         </CardContent>
       </Card>
     </div>
@@ -1238,6 +1239,580 @@ function ActivityLogTab() {
           ))}
           {activities.length === 0 && <p className="text-center text-xs text-slate-400 py-4">No activity found</p>}
         </div>
+      )}
+    </div>
+  );
+}
+
+
+// ============ AI AGENTS TAB ============
+function AIAgentsTab() {
+  const [agents, setAgents] = useState<any[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+
+  const loadAgents = useCallback(async () => {
+    setLoading(true);
+    setError('');
+    try {
+      const res = await fetch('/api/agent/monitor');
+      const data = await res.json();
+      if (res.ok) {
+        setAgents(data.agents || []);
+      } else {
+        setError(data.error || 'Failed to load agents');
+      }
+    } catch (e: any) {
+      setError(e.message || 'Network error');
+    }
+    setLoading(false);
+  }, []);
+
+  useEffect(() => { loadAgents(); }, [loadAgents]);
+
+  const activeCount = agents.filter(a => a.status === 'active' || a.status === 'running').length;
+  const totalTasksCompleted = agents.reduce((sum: number, a: any) => sum + (a.tasksCompleted || 0), 0);
+  const totalTasksFailed = agents.reduce((sum: number, a: any) => sum + (a.tasksFailed || 0), 0);
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <Badge variant="outline" className="text-[10px]">{agents.length} agents</Badge>
+          <Badge className="bg-green-100 text-green-700 text-[10px]">{activeCount} active</Badge>
+        </div>
+        <Button variant="outline" size="sm" className="h-7 text-xs gap-1" onClick={loadAgents}>
+          <RefreshCw className={cn('w-3 h-3', loading && 'animate-spin')} /> Refresh
+        </Button>
+      </div>
+
+      {error && (
+        <Card className="bg-red-50 border-red-200">
+          <CardContent className="p-3">
+            <p className="text-xs text-red-600 flex items-center gap-1"><AlertCircle className="w-3 h-3" /> {error}</p>
+          </CardContent>
+        </Card>
+      )}
+
+      <div className="grid grid-cols-3 gap-3">
+        <Card className="bg-blue-50 border-0 shadow-sm">
+          <CardContent className="p-4">
+            <div className="flex items-center gap-2 mb-2"><Bot className="w-5 h-5 text-blue-500" /><span className="text-xs text-slate-500">Total Agents</span></div>
+            <p className="text-2xl font-bold">{agents.length}</p>
+          </CardContent>
+        </Card>
+        <Card className="bg-green-50 border-0 shadow-sm">
+          <CardContent className="p-4">
+            <div className="flex items-center gap-2 mb-2"><CheckCircle className="w-5 h-5 text-green-500" /><span className="text-xs text-slate-500">Tasks Completed</span></div>
+            <p className="text-2xl font-bold">{totalTasksCompleted}</p>
+          </CardContent>
+        </Card>
+        <Card className="bg-red-50 border-0 shadow-sm">
+          <CardContent className="p-4">
+            <div className="flex items-center gap-2 mb-2"><XCircle className="w-5 h-5 text-red-500" /><span className="text-xs text-slate-500">Tasks Failed</span></div>
+            <p className="text-2xl font-bold">{totalTasksFailed}</p>
+          </CardContent>
+        </Card>
+      </div>
+
+      {loading ? <div className="flex items-center justify-center p-8"><Loader2 className="w-6 h-6 animate-spin" /></div> : (
+        <div className="border rounded-lg overflow-auto max-h-[55vh]">
+          <table className="w-full text-xs">
+            <thead className="bg-slate-50 sticky top-0">
+              <tr>
+                <th className="px-3 py-2 text-left font-medium">Agent</th>
+                <th className="px-3 py-2 text-left font-medium">Status</th>
+                <th className="px-3 py-2 text-left font-medium">Tasks Done</th>
+                <th className="px-3 py-2 text-left font-medium">Tasks Failed</th>
+                <th className="px-3 py-2 text-left font-medium">Last Active</th>
+              </tr>
+            </thead>
+            <tbody>
+              {agents.map((agent, i) => (
+                <tr key={agent.id || i} className="border-t hover:bg-slate-50">
+                  <td className="px-3 py-2 font-medium flex items-center gap-1.5"><Bot className="w-3.5 h-3.5 text-violet-500" /> {agent.name || agent.id}</td>
+                  <td className="px-3 py-2">
+                    <Badge className={cn('text-[10px]', agent.status === 'active' || agent.status === 'running' ? 'bg-green-100 text-green-700' : agent.status === 'idle' ? 'bg-yellow-100 text-yellow-700' : 'bg-slate-100 text-slate-700')}>
+                      {agent.status || 'unknown'}
+                    </Badge>
+                  </td>
+                  <td className="px-3 py-2">{agent.tasksCompleted ?? 0}</td>
+                  <td className="px-3 py-2">{agent.tasksFailed ?? 0}</td>
+                  <td className="px-3 py-2 text-slate-400">{agent.lastActive ? new Date(agent.lastActive).toLocaleString() : 'Never'}</td>
+                </tr>
+              ))}
+              {agents.length === 0 && (
+                <tr><td colSpan={5} className="px-3 py-8 text-center text-slate-400">No agents found</td></tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ============ BUG SCANNER TAB ============
+function BugScannerTab() {
+  const [bugs, setBugs] = useState<any[]>([]);
+  const [scanResults, setScanResults] = useState<any>(null);
+  const [loading, setLoading] = useState(false);
+  const [scanning, setScanning] = useState(false);
+  const [error, setError] = useState('');
+
+  const loadBugs = useCallback(async () => {
+    setLoading(true);
+    setError('');
+    try {
+      const res = await fetch('/api/agent/bug-detect');
+      const data = await res.json();
+      if (res.ok) {
+        setBugs(data.bugs || data.reports || []);
+        setScanResults(data.scanResults || data.summary || null);
+      } else {
+        setError(data.error || 'Failed to load bug data');
+      }
+    } catch (e: any) {
+      setError(e.message || 'Network error');
+    }
+    setLoading(false);
+  }, []);
+
+  useEffect(() => { loadBugs(); }, [loadBugs]);
+
+  const startScan = async () => {
+    setScanning(true);
+    setError('');
+    try {
+      const res = await fetch('/api/agent/bug-detect', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'scan' }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setBugs(data.bugs || data.reports || []);
+        setScanResults(data.scanResults || data.summary || null);
+      } else {
+        setError(data.error || 'Scan failed');
+      }
+    } catch (e: any) {
+      setError(e.message || 'Network error');
+    }
+    setScanning(false);
+  };
+
+  const criticalCount = bugs.filter(b => b.severity === 'critical').length;
+  const warningCount = bugs.filter(b => b.severity === 'warning' || b.severity === 'medium').length;
+  const fixedCount = bugs.filter(b => b.status === 'fixed' || b.autoFixed).length;
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <Badge variant="outline" className="text-[10px]">{bugs.length} reports</Badge>
+          {criticalCount > 0 && <Badge className="bg-red-100 text-red-700 text-[10px]">{criticalCount} critical</Badge>}
+        </div>
+        <div className="flex gap-2">
+          <Button size="sm" className="h-7 text-xs gap-1" onClick={startScan} disabled={scanning}>
+            {scanning ? <Loader2 className="w-3 h-3 animate-spin" /> : <ScanLine className="w-3 h-3" />} Start Bug Scan
+          </Button>
+          <Button variant="outline" size="sm" className="h-7 text-xs gap-1" onClick={loadBugs}>
+            <RefreshCw className={cn('w-3 h-3', loading && 'animate-spin')} /> Refresh
+          </Button>
+        </div>
+      </div>
+
+      {error && (
+        <Card className="bg-red-50 border-red-200">
+          <CardContent className="p-3">
+            <p className="text-xs text-red-600 flex items-center gap-1"><AlertCircle className="w-3 h-3" /> {error}</p>
+          </CardContent>
+        </Card>
+      )}
+
+      <div className="grid grid-cols-3 gap-3">
+        <Card className="bg-red-50 border-0 shadow-sm">
+          <CardContent className="p-4">
+            <div className="flex items-center gap-2 mb-2"><Bug className="w-5 h-5 text-red-500" /><span className="text-xs text-slate-500">Critical Bugs</span></div>
+            <p className="text-2xl font-bold">{criticalCount}</p>
+          </CardContent>
+        </Card>
+        <Card className="bg-yellow-50 border-0 shadow-sm">
+          <CardContent className="p-4">
+            <div className="flex items-center gap-2 mb-2"><AlertTriangle className="w-5 h-5 text-yellow-500" /><span className="text-xs text-slate-500">Warnings</span></div>
+            <p className="text-2xl font-bold">{warningCount}</p>
+          </CardContent>
+        </Card>
+        <Card className="bg-green-50 border-0 shadow-sm">
+          <CardContent className="p-4">
+            <div className="flex items-center gap-2 mb-2"><CheckCircle className="w-5 h-5 text-green-500" /><span className="text-xs text-slate-500">Auto-Fixed</span></div>
+            <p className="text-2xl font-bold">{fixedCount}</p>
+          </CardContent>
+        </Card>
+      </div>
+
+      {scanResults && (
+        <Card className="bg-slate-50 border-slate-200">
+          <CardHeader className="pb-2"><CardTitle className="text-xs flex items-center gap-1"><BarChart3 className="w-3.5 h-3.5" /> Scan Summary</CardTitle></CardHeader>
+          <CardContent className="text-xs text-slate-600">
+            <pre className="whitespace-pre-wrap">{typeof scanResults === 'string' ? scanResults : JSON.stringify(scanResults, null, 2)}</pre>
+          </CardContent>
+        </Card>
+      )}
+
+      {loading && !scanning ? <div className="flex items-center justify-center p-8"><Loader2 className="w-6 h-6 animate-spin" /></div> : (
+        <div className="border rounded-lg overflow-auto max-h-[45vh]">
+          <table className="w-full text-xs">
+            <thead className="bg-slate-50 sticky top-0">
+              <tr>
+                <th className="px-3 py-2 text-left font-medium">Bug</th>
+                <th className="px-3 py-2 text-left font-medium">Severity</th>
+                <th className="px-3 py-2 text-left font-medium">Status</th>
+                <th className="px-3 py-2 text-left font-medium">File</th>
+                <th className="px-3 py-2 text-left font-medium">Detected</th>
+              </tr>
+            </thead>
+            <tbody>
+              {bugs.map((bug, i) => (
+                <tr key={bug.id || i} className="border-t hover:bg-slate-50">
+                  <td className="px-3 py-2 font-medium">{bug.title || bug.name || bug.message || '-'}</td>
+                  <td className="px-3 py-2">
+                    <Badge className={cn('text-[10px]', bug.severity === 'critical' ? 'bg-red-100 text-red-700' : bug.severity === 'warning' || bug.severity === 'medium' ? 'bg-yellow-100 text-yellow-700' : 'bg-blue-100 text-blue-700')}>
+                      {bug.severity || 'info'}
+                    </Badge>
+                  </td>
+                  <td className="px-3 py-2">
+                    <Badge className={cn('text-[10px]', bug.status === 'fixed' || bug.autoFixed ? 'bg-green-100 text-green-700' : bug.status === 'open' ? 'bg-red-100 text-red-700' : 'bg-slate-100 text-slate-700')}>
+                      {bug.autoFixed ? 'auto-fixed' : bug.status || 'open'}
+                    </Badge>
+                  </td>
+                  <td className="px-3 py-2 text-slate-400 truncate max-w-[200px]">{bug.file || bug.path || '-'}</td>
+                  <td className="px-3 py-2 text-slate-400">{bug.detectedAt || bug.createdAt ? new Date(bug.detectedAt || bug.createdAt).toLocaleString() : '-'}</td>
+                </tr>
+              ))}
+              {bugs.length === 0 && (
+                <tr><td colSpan={5} className="px-3 py-8 text-center text-slate-400">No bug reports found. Run a scan to check for issues.</td></tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ============ SECURITY TAB ============
+function SecurityTab() {
+  const [alerts, setAlerts] = useState<any[]>([]);
+  const [threats, setThreats] = useState<any[]>([]);
+  const [firewallStatus, setFirewallStatus] = useState<any>(null);
+  const [loading, setLoading] = useState(false);
+  const [checking, setChecking] = useState(false);
+  const [error, setError] = useState('');
+
+  const loadSecurity = useCallback(async () => {
+    setLoading(true);
+    setError('');
+    try {
+      const res = await fetch('/api/agent/security');
+      const data = await res.json();
+      if (res.ok) {
+        setAlerts(data.alerts || []);
+        setThreats(data.threats || []);
+        setFirewallStatus(data.firewall || data.firewallStatus || null);
+      } else {
+        setError(data.error || 'Failed to load security data');
+      }
+    } catch (e: any) {
+      setError(e.message || 'Network error');
+    }
+    setLoading(false);
+  }, []);
+
+  useEffect(() => { loadSecurity(); }, [loadSecurity]);
+
+  const runSecurityCheck = async () => {
+    setChecking(true);
+    setError('');
+    try {
+      const res = await fetch('/api/agent/security', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'check' }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setAlerts(data.alerts || alerts);
+        setThreats(data.threats || threats);
+        setFirewallStatus(data.firewall || data.firewallStatus || firewallStatus);
+      } else {
+        setError(data.error || 'Security check failed');
+      }
+    } catch (e: any) {
+      setError(e.message || 'Network error');
+    }
+    setChecking(false);
+  };
+
+  const criticalAlerts = alerts.filter(a => a.level === 'critical' || a.severity === 'critical').length;
+  const activeThreats = threats.filter(t => t.status === 'active' || !t.resolved).length;
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <Badge variant="outline" className="text-[10px]">{alerts.length} alerts</Badge>
+          {criticalAlerts > 0 && <Badge className="bg-red-100 text-red-700 text-[10px]">{criticalAlerts} critical</Badge>}
+        </div>
+        <div className="flex gap-2">
+          <Button size="sm" className="h-7 text-xs gap-1" onClick={runSecurityCheck} disabled={checking}>
+            {checking ? <Loader2 className="w-3 h-3 animate-spin" /> : <ShieldCheck className="w-3 h-3" />} Run Security Check
+          </Button>
+          <Button variant="outline" size="sm" className="h-7 text-xs gap-1" onClick={loadSecurity}>
+            <RefreshCw className={cn('w-3 h-3', loading && 'animate-spin')} /> Refresh
+          </Button>
+        </div>
+      </div>
+
+      {error && (
+        <Card className="bg-red-50 border-red-200">
+          <CardContent className="p-3">
+            <p className="text-xs text-red-600 flex items-center gap-1"><AlertCircle className="w-3 h-3" /> {error}</p>
+          </CardContent>
+        </Card>
+      )}
+
+      <div className="grid grid-cols-3 gap-3">
+        <Card className="bg-red-50 border-0 shadow-sm">
+          <CardContent className="p-4">
+            <div className="flex items-center gap-2 mb-2"><ShieldAlert className="w-5 h-5 text-red-500" /><span className="text-xs text-slate-500">Critical Alerts</span></div>
+            <p className="text-2xl font-bold">{criticalAlerts}</p>
+          </CardContent>
+        </Card>
+        <Card className="bg-orange-50 border-0 shadow-sm">
+          <CardContent className="p-4">
+            <div className="flex items-center gap-2 mb-2"><AlertTriangle className="w-5 h-5 text-orange-500" /><span className="text-xs text-slate-500">Active Threats</span></div>
+            <p className="text-2xl font-bold">{activeThreats}</p>
+          </CardContent>
+        </Card>
+        <Card className={cn('border-0 shadow-sm', firewallStatus?.enabled || firewallStatus?.active ? 'bg-green-50' : 'bg-yellow-50')}>
+          <CardContent className="p-4">
+            <div className="flex items-center gap-2 mb-2"><Shield className="w-5 h-5 text-green-500" /><span className="text-xs text-slate-500">Firewall</span></div>
+            <p className="text-2xl font-bold">{firewallStatus?.enabled || firewallStatus?.active ? 'Active' : firewallStatus ? 'Inactive' : 'N/A'}</p>
+          </CardContent>
+        </Card>
+      </div>
+
+      {firewallStatus && (
+        <Card className="bg-slate-50 border-slate-200">
+          <CardHeader className="pb-2"><CardTitle className="text-xs flex items-center gap-1"><Shield className="w-3.5 h-3.5" /> Firewall Details</CardTitle></CardHeader>
+          <CardContent className="text-xs text-slate-600">
+            <pre className="whitespace-pre-wrap">{typeof firewallStatus === 'string' ? firewallStatus : JSON.stringify(firewallStatus, null, 2)}</pre>
+          </CardContent>
+        </Card>
+      )}
+
+      {loading ? <div className="flex items-center justify-center p-8"><Loader2 className="w-6 h-6 animate-spin" /></div> : (
+        <>
+          <Card className="bg-white border-slate-200 shadow-sm">
+            <CardHeader className="pb-2"><CardTitle className="text-xs">Security Alerts</CardTitle></CardHeader>
+            <CardContent>
+              <div className="space-y-1 max-h-[30vh] overflow-auto">
+                {alerts.map((alert, i) => (
+                  <div key={alert.id || i} className="flex items-center gap-3 p-2 hover:bg-slate-50 rounded text-xs">
+                    <Badge className={cn('text-[9px] shrink-0', alert.level === 'critical' || alert.severity === 'critical' ? 'bg-red-100 text-red-700' : alert.level === 'warning' || alert.severity === 'high' ? 'bg-yellow-100 text-yellow-700' : 'bg-blue-100 text-blue-700')}>
+                      {alert.level || alert.severity || 'info'}
+                    </Badge>
+                    <span className="font-medium">{alert.title || alert.type || '-'}</span>
+                    <span className="text-slate-400 truncate flex-1">{alert.description || alert.message || alert.details || ''}</span>
+                    <span className="text-slate-400 shrink-0">{alert.createdAt || alert.timestamp ? new Date(alert.createdAt || alert.timestamp).toLocaleString() : ''}</span>
+                  </div>
+                ))}
+                {alerts.length === 0 && <p className="text-center text-slate-400 py-4">No security alerts</p>}
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="bg-white border-slate-200 shadow-sm">
+            <CardHeader className="pb-2"><CardTitle className="text-xs">Threats</CardTitle></CardHeader>
+            <CardContent>
+              <div className="border rounded-lg overflow-auto max-h-[25vh]">
+                <table className="w-full text-xs">
+                  <thead className="bg-slate-50 sticky top-0">
+                    <tr>
+                      <th className="px-3 py-2 text-left font-medium">Threat</th>
+                      <th className="px-3 py-2 text-left font-medium">Source</th>
+                      <th className="px-3 py-2 text-left font-medium">Status</th>
+                      <th className="px-3 py-2 text-left font-medium">Detected</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {threats.map((threat, i) => (
+                      <tr key={threat.id || i} className="border-t hover:bg-slate-50">
+                        <td className="px-3 py-2 font-medium">{threat.name || threat.type || '-'}</td>
+                        <td className="px-3 py-2 text-slate-400">{threat.source || threat.ip || '-'}</td>
+                        <td className="px-3 py-2">
+                          <Badge className={cn('text-[10px]', threat.resolved || threat.status === 'resolved' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700')}>
+                            {threat.resolved ? 'resolved' : threat.status || 'active'}
+                          </Badge>
+                        </td>
+                        <td className="px-3 py-2 text-slate-400">{threat.detectedAt || threat.createdAt ? new Date(threat.detectedAt || threat.createdAt).toLocaleString() : '-'}</td>
+                      </tr>
+                    ))}
+                    {threats.length === 0 && (
+                      <tr><td colSpan={4} className="px-3 py-8 text-center text-slate-400">No threats detected</td></tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </CardContent>
+          </Card>
+        </>
+      )}
+    </div>
+  );
+}
+
+// ============ AI LEARNING TAB ============
+function AILearningTab() {
+  const [sessions, setSessions] = useState<any[]>([]);
+  const [knowledgeBase, setKnowledgeBase] = useState<any>(null);
+  const [insights, setInsights] = useState<any[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+
+  const loadLearning = useCallback(async () => {
+    setLoading(true);
+    setError('');
+    try {
+      const res = await fetch('/api/agent/learning');
+      const data = await res.json();
+      if (res.ok) {
+        setSessions(data.sessions || []);
+        setKnowledgeBase(data.knowledgeBase || data.knowledge || null);
+        setInsights(data.insights || []);
+      } else {
+        setError(data.error || 'Failed to load learning data');
+      }
+    } catch (e: any) {
+      setError(e.message || 'Network error');
+    }
+    setLoading(false);
+  }, []);
+
+  useEffect(() => { loadLearning(); }, [loadLearning]);
+
+  const completedSessions = sessions.filter(s => s.status === 'completed' || s.completed).length;
+  const totalAccuracy = sessions.length > 0
+    ? (sessions.reduce((sum: number, s: any) => sum + (s.accuracy || s.score || 0), 0) / sessions.length).toFixed(1)
+    : '0.0';
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <Badge variant="outline" className="text-[10px]">{sessions.length} sessions</Badge>
+        </div>
+        <Button variant="outline" size="sm" className="h-7 text-xs gap-1" onClick={loadLearning}>
+          <RefreshCw className={cn('w-3 h-3', loading && 'animate-spin')} /> Refresh
+        </Button>
+      </div>
+
+      {error && (
+        <Card className="bg-red-50 border-red-200">
+          <CardContent className="p-3">
+            <p className="text-xs text-red-600 flex items-center gap-1"><AlertCircle className="w-3 h-3" /> {error}</p>
+          </CardContent>
+        </Card>
+      )}
+
+      <div className="grid grid-cols-3 gap-3">
+        <Card className="bg-violet-50 border-0 shadow-sm">
+          <CardContent className="p-4">
+            <div className="flex items-center gap-2 mb-2"><GraduationCap className="w-5 h-5 text-violet-500" /><span className="text-xs text-slate-500">Sessions</span></div>
+            <p className="text-2xl font-bold">{sessions.length}</p>
+          </CardContent>
+        </Card>
+        <Card className="bg-green-50 border-0 shadow-sm">
+          <CardContent className="p-4">
+            <div className="flex items-center gap-2 mb-2"><CheckCircle className="w-5 h-5 text-green-500" /><span className="text-xs text-slate-500">Completed</span></div>
+            <p className="text-2xl font-bold">{completedSessions}</p>
+          </CardContent>
+        </Card>
+        <Card className="bg-blue-50 border-0 shadow-sm">
+          <CardContent className="p-4">
+            <div className="flex items-center gap-2 mb-2"><Sparkles className="w-5 h-5 text-blue-500" /><span className="text-xs text-slate-500">Avg Accuracy</span></div>
+            <p className="text-2xl font-bold">{totalAccuracy}%</p>
+          </CardContent>
+        </Card>
+      </div>
+
+      {knowledgeBase && (
+        <Card className="bg-slate-50 border-slate-200">
+          <CardHeader className="pb-2"><CardTitle className="text-xs flex items-center gap-1"><BookOpen className="w-3.5 h-3.5" /> Knowledge Base Stats</CardTitle></CardHeader>
+          <CardContent className="text-xs text-slate-600">
+            <pre className="whitespace-pre-wrap">{typeof knowledgeBase === 'string' ? knowledgeBase : JSON.stringify(knowledgeBase, null, 2)}</pre>
+          </CardContent>
+        </Card>
+      )}
+
+      {insights.length > 0 && (
+        <Card className="bg-white border-slate-200 shadow-sm">
+          <CardHeader className="pb-2"><CardTitle className="text-xs flex items-center gap-1"><Sparkles className="w-3.5 h-3.5 text-amber-500" /> AI Insights</CardTitle></CardHeader>
+          <CardContent>
+            <div className="space-y-1 max-h-[20vh] overflow-auto">
+              {insights.map((insight, i) => (
+                <div key={i} className="flex items-start gap-2 p-2 bg-amber-50 rounded text-xs">
+                  <Sparkles className="w-3 h-3 text-amber-500 shrink-0 mt-0.5" />
+                  <div>
+                    <span className="font-medium">{insight.title || insight.type || 'Insight'}</span>
+                    {insight.description || insight.content ? <p className="text-slate-500 mt-0.5">{insight.description || insight.content}</p> : null}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {loading ? <div className="flex items-center justify-center p-8"><Loader2 className="w-6 h-6 animate-spin" /></div> : (
+        <Card className="bg-white border-slate-200 shadow-sm">
+          <CardHeader className="pb-2"><CardTitle className="text-xs">Learning Sessions</CardTitle></CardHeader>
+          <CardContent>
+            <div className="border rounded-lg overflow-auto max-h-[35vh]">
+              <table className="w-full text-xs">
+                <thead className="bg-slate-50 sticky top-0">
+                  <tr>
+                    <th className="px-3 py-2 text-left font-medium">Session</th>
+                    <th className="px-3 py-2 text-left font-medium">Agent</th>
+                    <th className="px-3 py-2 text-left font-medium">Status</th>
+                    <th className="px-3 py-2 text-left font-medium">Accuracy</th>
+                    <th className="px-3 py-2 text-left font-medium">Date</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {sessions.map((session, i) => (
+                    <tr key={session.id || i} className="border-t hover:bg-slate-50">
+                      <td className="px-3 py-2 font-medium">{session.name || session.topic || session.id || '-'}</td>
+                      <td className="px-3 py-2">{session.agent || session.agentName || '-'}</td>
+                      <td className="px-3 py-2">
+                        <Badge className={cn('text-[10px]', session.status === 'completed' || session.completed ? 'bg-green-100 text-green-700' : session.status === 'running' || session.status === 'active' ? 'bg-blue-100 text-blue-700' : 'bg-slate-100 text-slate-700')}>
+                          {session.status || (session.completed ? 'completed' : 'pending')}
+                        </Badge>
+                      </td>
+                      <td className="px-3 py-2">{session.accuracy !== undefined ? `${session.accuracy}%` : session.score !== undefined ? `${session.score}%` : '-'}</td>
+                      <td className="px-3 py-2 text-slate-400">{session.createdAt || session.date ? new Date(session.createdAt || session.date).toLocaleString() : '-'}</td>
+                    </tr>
+                  ))}
+                  {sessions.length === 0 && (
+                    <tr><td colSpan={5} className="px-3 py-8 text-center text-slate-400">No learning sessions found</td></tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </CardContent>
+        </Card>
       )}
     </div>
   );
@@ -1296,6 +1871,10 @@ export default function SuperAdminView({ onNavigate }: SuperAdminViewProps) {
           <TabsTrigger value="database" className="text-xs gap-1"><Database className="w-3.5 h-3.5" />Database</TabsTrigger>
           <TabsTrigger value="system" className="text-xs gap-1"><Settings className="w-3.5 h-3.5" />System</TabsTrigger>
           <TabsTrigger value="activity" className="text-xs gap-1"><Activity className="w-3.5 h-3.5" />Activity</TabsTrigger>
+          <TabsTrigger value="ai-agents" className="text-xs gap-1"><Bot className="w-3.5 h-3.5" />AI Agents</TabsTrigger>
+          <TabsTrigger value="bug-scanner" className="text-xs gap-1"><Bug className="w-3.5 h-3.5" />Bug Scanner</TabsTrigger>
+          <TabsTrigger value="security" className="text-xs gap-1"><Shield className="w-3.5 h-3.5" />Security</TabsTrigger>
+          <TabsTrigger value="ai-learning" className="text-xs gap-1"><GraduationCap className="w-3.5 h-3.5" />AI Learning</TabsTrigger>
         </TabsList>
 
         <div className="mt-4 flex-1 overflow-auto">
@@ -1340,6 +1919,10 @@ export default function SuperAdminView({ onNavigate }: SuperAdminViewProps) {
           <TabsContent value="database"><DatabaseManagerTab /></TabsContent>
           <TabsContent value="system"><SystemControlTab /></TabsContent>
           <TabsContent value="activity"><ActivityLogTab /></TabsContent>
+          <TabsContent value="ai-agents"><AIAgentsTab /></TabsContent>
+          <TabsContent value="bug-scanner"><BugScannerTab /></TabsContent>
+          <TabsContent value="security"><SecurityTab /></TabsContent>
+          <TabsContent value="ai-learning"><AILearningTab /></TabsContent>
         </div>
       </Tabs>
     </div>

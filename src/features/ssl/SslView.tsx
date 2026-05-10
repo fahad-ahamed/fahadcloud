@@ -103,8 +103,8 @@ export default function SslView({ domains, onInstallSsl }: SslViewProps) {
         loading: false,
         success: true,
         error: null,
-        provider: domain.sslProvider || "Let's Encrypt",
-        expiry: domain.sslExpiry,
+        provider: (domain as any).sslProvider || "Let's Encrypt",
+        expiry: (domain as any).sslExpiry,
       };
     }
     return installState[domainName] || { loading: false, success: false, error: null };

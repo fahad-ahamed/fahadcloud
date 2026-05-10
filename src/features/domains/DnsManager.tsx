@@ -105,7 +105,7 @@ export default function DnsManager({
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-                <Select value={newDnsRecord.type} onValueChange={v => setNewDnsRecord(p => ({ ...p, type: v }))}>
+                <Select value={newDnsRecord.type} onValueChange={v => setNewDnsRecord({ ...newDnsRecord, type: v })}>
                   <SelectTrigger className="bg-white border-slate-200 focus:border-emerald-400">
                     <SelectValue />
                   </SelectTrigger>
@@ -115,8 +115,8 @@ export default function DnsManager({
                     ))}
                   </SelectContent>
                 </Select>
-                <Input className="bg-white border-slate-200 focus:border-emerald-400" placeholder="Name" value={newDnsRecord.name} onChange={e => setNewDnsRecord(p => ({ ...p, name: e.target.value }))} />
-                <Input className="bg-white border-slate-200 focus:border-emerald-400" placeholder="Value" value={newDnsRecord.value} onChange={e => setNewDnsRecord(p => ({ ...p, value: e.target.value }))} />
+                <Input className="bg-white border-slate-200 focus:border-emerald-400" placeholder="Name" value={newDnsRecord.name} onChange={e => setNewDnsRecord({ ...newDnsRecord, name: e.target.value })} />
+                <Input className="bg-white border-slate-200 focus:border-emerald-400" placeholder="Value" value={newDnsRecord.value} onChange={e => setNewDnsRecord({ ...newDnsRecord, value: e.target.value })} />
                 <Button className="bg-emerald-600 hover:bg-emerald-700" onClick={onAddDnsRecord}>
                   <Plus className="w-4 h-4" />
                 </Button>

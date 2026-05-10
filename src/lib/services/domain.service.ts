@@ -1,14 +1,14 @@
 import { db } from '@/lib/db';
 import { domainRepository } from '@/lib/repositories';
-import { usdToBdt } from '@/lib/bkash';
 
-const FREE_TLDS = ['fahadcloud.com', 'tk', 'ml', 'ga', 'cf', 'eu.org', 'pp.ua'];
+// ========== ALL DOMAINS ARE FREE - FAHADCLOUD ==========
+// Every domain registers instantly without payment
 
 export class DomainService {
   async listUserDomains(userId: string) {
     const domains = await domainRepository.findByUserId(userId);
     return domains.map(d => ({
-      id: d.id, name: d.name, tld: d.tld, sld: d.sld, isFree: d.isFree,
+      id: d.id, name: d.name, tld: d.tld, sld: d.sld, isFree: true,
       status: d.status, registeredAt: d.registeredAt, expiresAt: d.expiresAt,
       autoRenew: d.autoRenew, sslEnabled: d.sslEnabled,
       nameserver1: d.nameserver1, nameserver2: d.nameserver2,
@@ -37,22 +37,18 @@ export class DomainService {
     const existingDomain = await domainRepository.findByName(domainLower);
     if (existingDomain) return { error: 'Domain is already registered', status: 409 };
 
-    const isFree = data.isFree !== undefined ? data.isFree : FREE_TLDS.includes(tld);
+    // ALL DOMAINS REGISTER FREE INSTANTLY
+    const domain = await domainRepository.createWithDns({
+      name: domainLower, tld, sld, isFree: true, status: 'active', userId, years: data.years || 1,
+    });
 
-    if (isFree) {
-      // Register free domain immediately
-      const domain = await domainRepository.createWithDns({
-        name: domainLower, tld, sld, isFree: true, status: 'active', userId, years: data.years || 1,
-      });
-
-      // Create hosting directory for the domain
-      try {
-        const fs = require('fs');
-        const hostDir = '/home/fahad/hosting/users/' + userId + '/' + domainLower;
-        fs.mkdirSync(hostDir, { recursive: true });
-        
-        // Create a default index.html
-        const indexHtml = `<!DOCTYPE html>
+    // Create hosting directory for the domain
+    try {
+      const fs = require('fs');
+      const hostDir = '/home/fahad/hosting/users/' + userId + '/' + domainLower;
+      fs.mkdirSync(hostDir, { recursive: true });
+      
+      const indexHtml = `<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
@@ -65,6 +61,7 @@ export class DomainService {
     h1 { font-size: 3rem; margin-bottom: 1rem; }
     p { font-size: 1.2rem; opacity: 0.9; margin-bottom: 0.5rem; }
     .badge { display: inline-block; background: rgba(255,255,255,0.2); padding: 0.5rem 1rem; border-radius: 2rem; margin-top: 1rem; }
+    .free-badge { background: rgba(255,255,255,0.3); font-weight: bold; font-size: 1.1rem; }
     a { color: white; }
   </style>
 </head>
@@ -73,96 +70,61 @@ export class DomainService {
     <h1>Welcome!</h1>
     <p>Your domain <strong>${domainLower}</strong> is now active.</p>
     <p>Powered by FahadCloud</p>
-    <div class="badge">Deploy your site via the <a href="/">FahadCloud Dashboard</a></div>
+    <div class="badge free-badge">100% FREE - Unlimited Everything</div>
+    <div class="badge" style="margin-top:1.5rem">Deploy your site via the <a href="/">FahadCloud Dashboard</a></div>
   </div>
 </body>
 </html>`;
-        fs.writeFileSync(hostDir + '/index.html', indexHtml);
-      } catch (e: any) {
-        console.error('Hosting dir creation error:', e.message);
-      }
+      fs.writeFileSync(hostDir + '/index.html', indexHtml);
+    } catch (e: any) {
+      console.error('Hosting dir creation error:', e.message);
+    }
 
-      // Create DNS zone file
-      try {
-        const { getDnsEngine } = await import('@/lib/dns-engine');
-        getDnsEngine().writeZoneFile(domainLower, [
-          { type: 'A', name: '@', value: '52.201.210.162', ttl: 3600 },
-          { type: 'A', name: 'www', value: '52.201.210.162', ttl: 3600 },
-        ]);
-      } catch (e: any) {
-        console.error('DNS zone creation error:', e.message);
-      }
+    // Create DNS zone file
+    try {
+      const { getDnsEngine } = await import('@/lib/dns-engine');
+      getDnsEngine().writeZoneFile(domainLower, [
+        { type: 'A', name: '@', value: '52.201.210.162', ttl: 3600 },
+        { type: 'A', name: 'www', value: '52.201.210.162', ttl: 3600 },
+      ]);
+    } catch (e: any) {
+      console.error('DNS zone creation error:', e.message);
+    }
 
-      // Create hosting environment entry in database
-      try {
-        await db.hostingEnvironment.create({
-          data: {
-            userId,
-            domainId: domain.id,
-            planSlug: 'starter',
-            status: 'active',
-            rootPath: '/home/fahad/hosting/users/' + userId + '/' + domainLower,
-            serverType: 'static',
-            sslEnabled: false,
-            storageUsed: 0,
-            storageLimit: 1073741824, // 1GB
-          },
-        });
-      } catch (e: any) {
-        console.error('Hosting env creation error:', e.message);
-      }
-
-      // Create notification for user
-      try {
-        await db.notification.create({
-          data: {
-            userId,
-            title: 'Domain Registered Successfully!',
-            message: `Your free domain ${domainLower} has been registered and is now active. You can deploy your website using the Deploy section.`,
-            type: 'success',
-          },
-        });
-      } catch (e: any) {
-        console.error('Notification error:', e.message);
-      }
-
-      return { message: 'Free domain registered successfully', domain, isFree: true, status: 201 };
-    } else {
-      // Paid domain - create order for payment
-      const tldPricing = await db.tldPricing.findFirst({
-        where: {
-          OR: [
-            { tld: '.' + tld },
-            { tld: tld },
-          ]
-        }
-      });
-      
-      if (!tldPricing) return { error: `Pricing not available for .${tld}. Please contact support.`, status: 400 };
-
-      const registerPrice = tldPricing.promo && tldPricing.promoPrice ? tldPricing.promoPrice : tldPricing.registerPrice;
-      const totalPrice = registerPrice * (data.years || 1);
-      const totalPriceBDT = usdToBdt(totalPrice);
-
-      const order = await db.order.create({
+    // Create hosting environment entry in database with UNLIMITED storage
+    try {
+      await db.hostingEnvironment.create({
         data: {
-          userId, type: 'domain_registration',
-          description: `Domain registration: ${domainLower} for ${data.years || 1} year(s)`,
-          amount: totalPriceBDT, status: 'pending', paymentStatus: 'unpaid',
-          domainName: domainLower, tld, years: data.years || 1, isFreeDomain: false,
-          hostingPlanSlug: data.hostingPlanSlug || null,
-          items: JSON.stringify({ domainName: domainLower, tld, years: data.years || 1, pricePerYear: registerPrice, totalPrice, totalPriceBDT }),
+          userId,
+          domainId: domain.id,
+          planSlug: data.hostingPlanSlug || 'enterprise',
+          status: 'active',
+          rootPath: '/home/fahad/hosting/users/' + userId + '/' + domainLower,
+          serverType: 'static',
+          sslEnabled: false,
+          storageUsed: 0,
+          storageLimit: 107374182400, // 100GB - FREE
         },
       });
-
-      return {
-        message: 'Order created for paid domain registration',
-        order: { id: order.id, amount: order.amount, status: order.status, paymentStatus: order.paymentStatus, domainName: order.domainName, createdAt: order.createdAt },
-        isFree: false,
-        pricing: { pricePerYearUSD: registerPrice, totalPriceUSD: totalPrice, totalPriceBDT, years: data.years || 1 },
-        status: 201,
-      };
+    } catch (e: any) {
+      console.error('Hosting env creation error:', e.message);
     }
+
+    // Create notification for user
+    try {
+      await db.notification.create({
+        data: {
+          userId,
+          title: 'Domain Registered Successfully - FREE!',
+          message: `Your domain ${domainLower} has been registered for FREE and is now active. You have unlimited storage and all features enabled. Deploy your website now!`,
+          type: 'success',
+        },
+      });
+    } catch (e: any) {
+      console.error('Notification error:', e.message);
+    }
+
+    return { message: 'Domain registered successfully for FREE!', domain, isFree: true, status: 201 };
   }
 
   async deleteDomain(domainId: string, userId: string, userRole: string) {
@@ -170,7 +132,6 @@ export class DomainService {
     if (!domain) return { error: 'Domain not found', status: 404 };
     if (domain.userId !== userId && userRole !== 'admin') return { error: 'Access denied', status: 403 };
 
-    // Delete hosting environment if exists
     try {
       const hostingEnv = await db.hostingEnvironment.findUnique({ where: { domainId: domainId } });
       if (hostingEnv) {

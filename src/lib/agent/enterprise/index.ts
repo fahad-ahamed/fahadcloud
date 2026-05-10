@@ -3,7 +3,7 @@
 // billing intelligence, and advanced observability
 
 import { PrismaClient } from '@prisma/client';
-import { AgentId, AuditLog, generateId } from '../types';
+import { AgentId, generateId } from '../types';
 
 const prisma = new PrismaClient();
 

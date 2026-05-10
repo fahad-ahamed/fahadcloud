@@ -2,11 +2,7 @@
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Loader2, CreditCard } from 'lucide-react';
-import { statusColor } from '@/lib/formatters';
+import { Gift, CheckCircle2, Sparkles, Zap, Globe, Shield, HardDrive, Brain, Server } from 'lucide-react';
 import type { OrderItem } from '@/types';
 
 interface PaymentsViewProps {
@@ -22,64 +18,91 @@ interface PaymentsViewProps {
 }
 
 export default function PaymentsView({
-  paymentOrder, bkashNumber, setBkashNumber,
-  bkashTrxId, setBkashTrxId, paymentProcessing,
-  orders, ordersLoading, onSubmitPayment,
+  orders, ordersLoading,
 }: PaymentsViewProps) {
   return (
     <div className="space-y-6 animate-fade-in">
-      <Card className="bg-gradient-to-r from-emerald-50 to-teal-50 border-emerald-500/20">
-        <CardContent className="p-6">
-          <h2 className="text-xl sm:text-2xl font-bold mb-2">Payment via bKash</h2>
-          <p className="text-slate-500">Pay securely using bKash mobile banking</p>
+      {/* Free Banner */}
+      <Card className="bg-gradient-to-r from-emerald-500 to-teal-600 border-0 shadow-xl">
+        <CardContent className="p-8 text-center">
+          <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-white/20 mb-4">
+            <Gift className="w-8 h-8 text-white" />
+          </div>
+          <h2 className="text-3xl font-bold text-white mb-2">100% FREE Platform</h2>
+          <p className="text-emerald-100 text-lg mb-4">All domains, hosting, SSL, AI agents, and storage are completely free. No credit card needed. No hidden charges. Forever.</p>
+          <div className="flex flex-wrap justify-center gap-3">
+            <Badge className="bg-white/20 text-white border-white/30 px-3 py-1"><Zap className="w-3 h-3 mr-1" /> Unlimited Domains</Badge>
+            <Badge className="bg-white/20 text-white border-white/30 px-3 py-1"><HardDrive className="w-3 h-3 mr-1" /> 100GB Storage</Badge>
+            <Badge className="bg-white/20 text-white border-white/30 px-3 py-1"><Brain className="w-3 h-3 mr-1" /> 14 AI Agents</Badge>
+            <Badge className="bg-white/20 text-white border-white/30 px-3 py-1"><Shield className="w-3 h-3 mr-1" /> Free SSL</Badge>
+            <Badge className="bg-white/20 text-white border-white/30 px-3 py-1"><Server className="w-3 h-3 mr-1" /> Free Hosting</Badge>
+            <Badge className="bg-white/20 text-white border-white/30 px-3 py-1"><Globe className="w-3 h-3 mr-1" /> Free DNS</Badge>
+          </div>
         </CardContent>
       </Card>
 
-      {paymentOrder && (
-        <Card className="bg-white border-slate-200 shadow-sm border-emerald-200">
-          <CardHeader>
-            <CardTitle className="text-lg">Order Summary</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="p-4 bg-slate-50 rounded-xl">
-              <div className="flex justify-between mb-2">
-                <span className="text-slate-500">Item</span>
-                <span>{paymentOrder.domain || paymentOrder.type}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-slate-500">Amount</span>
-                <span className="text-xl font-bold text-emerald-600">৳{paymentOrder.price?.toFixed(0) || '0'}</span>
-              </div>
-            </div>
-            <div className="space-y-3">
-              <div>
-                <Label className="text-slate-600">bKash Number</Label>
-                <Input className="bg-white border-slate-200 focus:border-emerald-400" placeholder="01XXXXXXXXX" value={bkashNumber} onChange={e => setBkashNumber(e.target.value)} />
+      {/* Free Features Grid */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <Card className="bg-white border-slate-200 shadow-sm">
+          <CardContent className="p-5">
+            <div className="flex items-center gap-3 mb-3">
+              <div className="w-10 h-10 rounded-lg bg-emerald-100 flex items-center justify-center">
+                <CheckCircle2 className="w-5 h-5 text-emerald-600" />
               </div>
               <div>
-                <Label className="text-slate-600">Transaction ID (TRXID)</Label>
-                <Input className="bg-white border-slate-200 focus:border-emerald-400" placeholder="Enter your bKash TRX ID" value={bkashTrxId} onChange={e => setBkashTrxId(e.target.value)} />
+                <h3 className="font-semibold text-slate-900">Domain Registration</h3>
+                <p className="text-xs text-slate-500">Any TLD, instantly activated</p>
               </div>
-              <Button className="w-full bg-emerald-600 hover:bg-emerald-700" onClick={onSubmitPayment} disabled={paymentProcessing}>
-                {paymentProcessing ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <CreditCard className="w-4 h-4 mr-2" />}
-                Submit Payment
-              </Button>
             </div>
+            <p className="text-sm text-slate-600">Register any domain for free with automatic DNS configuration and hosting setup. No limits on the number of domains.</p>
           </CardContent>
         </Card>
-      )}
 
-      <Card className="bg-white border-slate-200 shadow-sm">
-        <CardHeader>
-          <CardTitle className="text-sm">Payment Instructions</CardTitle>
-        </CardHeader>
-        <CardContent className="text-sm text-slate-500 space-y-2">
-          <p>1. Send ৳{paymentOrder?.price?.toFixed(0) || '---'} to bKash number: <span className="text-slate-900 font-medium">01712345678</span></p>
-          <p>2. Copy the Transaction ID (TRXID) from the confirmation message</p>
-          <p>3. Enter your bKash number and TRX ID above</p>
-          <p>4. Your payment will be verified within 5-30 minutes</p>
-        </CardContent>
-      </Card>
+        <Card className="bg-white border-slate-200 shadow-sm">
+          <CardContent className="p-5">
+            <div className="flex items-center gap-3 mb-3">
+              <div className="w-10 h-10 rounded-lg bg-purple-100 flex items-center justify-center">
+                <Sparkles className="w-5 h-5 text-purple-600" />
+              </div>
+              <div>
+                <h3 className="font-semibold text-slate-900">14 AI Agents</h3>
+                <p className="text-xs text-slate-500">Full access to all agents</p>
+              </div>
+            </div>
+            <p className="text-sm text-slate-600">Get full access to all 14 AI agents including DevOps, Security, Monitoring, SSL, Database, and more. No usage limits.</p>
+          </CardContent>
+        </Card>
+
+        <Card className="bg-white border-slate-200 shadow-sm">
+          <CardContent className="p-5">
+            <div className="flex items-center gap-3 mb-3">
+              <div className="w-10 h-10 rounded-lg bg-blue-100 flex items-center justify-center">
+                <Shield className="w-5 h-5 text-blue-600" />
+              </div>
+              <div>
+                <h3 className="font-semibold text-slate-900">SSL Certificates</h3>
+                <p className="text-xs text-slate-500">Let's Encrypt, auto-renewal</p>
+              </div>
+            </div>
+            <p className="text-sm text-slate-600">Free SSL certificates on all domains with automatic provisioning and renewal. Full HTTPS security included.</p>
+          </CardContent>
+        </Card>
+
+        <Card className="bg-white border-slate-200 shadow-sm">
+          <CardContent className="p-5">
+            <div className="flex items-center gap-3 mb-3">
+              <div className="w-10 h-10 rounded-lg bg-orange-100 flex items-center justify-center">
+                <HardDrive className="w-5 h-5 text-orange-600" />
+              </div>
+              <div>
+                <h3 className="font-semibold text-slate-900">100GB Cloud Storage</h3>
+                <p className="text-xs text-slate-500">Unlimited file hosting</p>
+              </div>
+            </div>
+            <p className="text-sm text-slate-600">100GB of cloud storage for all your files with file manager, public sharing links, and CDN delivery.</p>
+          </CardContent>
+        </Card>
+      </div>
 
       {/* Order History */}
       <Card className="bg-white border-slate-200 shadow-sm">
@@ -89,7 +112,6 @@ export default function PaymentsView({
         <CardContent>
           {ordersLoading ? (
             <div className="flex items-center justify-center py-8">
-              <Loader2 className="w-5 h-5 animate-spin text-emerald-600 mr-2" />
               <span className="text-slate-500">Loading orders...</span>
             </div>
           ) : orders.length > 0 ? (
@@ -109,8 +131,8 @@ export default function PaymentsView({
                     <tr key={o.id || i} className="border-t border-slate-100">
                       <td className="py-2 font-mono text-xs">{o.id?.substring(0, 8)}...</td>
                       <td className="py-2">{o.type || o.description}</td>
-                      <td className="py-2">৳{o.amount?.toFixed(0)}</td>
-                      <td className="py-2"><Badge className={statusColor(o.status)}>{o.status}</Badge></td>
+                      <td className="py-2"><Badge className="bg-emerald-100 text-emerald-700">FREE</Badge></td>
+                      <td className="py-2"><Badge className="bg-emerald-100 text-emerald-700">Active</Badge></td>
                       <td className="py-2 text-slate-500">{new Date(o.createdAt).toLocaleDateString()}</td>
                     </tr>
                   ))}
@@ -118,7 +140,10 @@ export default function PaymentsView({
               </table>
             </div>
           ) : (
-            <div className="text-center py-8 text-slate-400">No orders yet</div>
+            <div className="text-center py-8 text-slate-400">
+              <Gift className="w-8 h-8 mx-auto mb-2 text-emerald-400" />
+              <p>No orders yet. Everything is free!</p>
+            </div>
           )}
         </CardContent>
       </Card>

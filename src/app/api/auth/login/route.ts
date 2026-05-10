@@ -1,13 +1,13 @@
-import { ActivityLog } from '@/lib/activity-logger';
-import { NextRequest, NextResponse } from 'next/server';
-import { authService } from '@/lib/services';
+import { ActivityLog } from "@/lib/activity-logger";
+import { NextRequest, NextResponse } from "next/server";
+import { authService } from "@/lib/services";
 
 export async function POST(request: NextRequest) {
   try {
-    const ip = request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip') || 'unknown';
+    const ip = request.headers.get("x-forwarded-for") || request.headers.get("x-real-ip") || "unknown";
     const body = await request.json();
     const { email, username, password } = body;
-    const emailOrUsername = email || username || '';
+    const emailOrUsername = email || username || "";
 
     const result = await authService.login(emailOrUsername, password, ip);
 
@@ -20,19 +20,22 @@ export async function POST(request: NextRequest) {
 
     const response = NextResponse.json(successBody);
 
-    response.cookies.set('fahadcloud-token', token, {
+    const isHttps = request.headers.get("x-forwarded-proto") === "https" || process.env.ENFORCE_HTTPS === "true";
+    
+    response.cookies.set("fahadcloud-token", token, {
       httpOnly: true,
-      secure: false,
-      sameSite: 'lax',
+      secure: isHttps,
+      sameSite: "lax",
       maxAge: 7 * 24 * 60 * 60,
-      path: '/',
+      path: "/",
+      domain: undefined,
     });
 
     return response;
   } catch (error: any) {
-    console.error('Login error:', error);
+    console.error("Login error:", error);
     return NextResponse.json(
-      { error: 'Login failed. Please try again.' },
+      { error: "Login failed. Please try again." },
       { status: 500 }
     );
   }
@@ -40,22 +43,23 @@ export async function POST(request: NextRequest) {
 
 export async function DELETE() {
   try {
-    const response = NextResponse.json({ message: 'Logged out successfully' });
+    const response = NextResponse.json({ message: "Logged out successfully" });
 
-    response.cookies.set('fahadcloud-token', '', {
+    response.cookies.set("fahadcloud-token", "", {
       httpOnly: true,
-      secure: false,
-      sameSite: 'lax',
+      secure: true,
+      sameSite: "lax",
       maxAge: 0,
-      path: '/',
+      path: "/",
     });
 
     return response;
   } catch (error: any) {
-    console.error('Logout error:', error);
+    console.error("Logout error:", error);
     return NextResponse.json(
-      { error: 'Logout failed' },
+      { error: "Logout failed" },
       { status: 500 }
     );
   }
 }
+

@@ -1,6 +1,6 @@
 {
   "name": "fahadcloud",
-  "version": "4.0.0",
+  "version": "5.0.0-ultra",
   "private": true,
   "scripts": {
     "dev": "next dev -p 3000",
@@ -8,10 +8,20 @@
     "start": "NODE_ENV=production node .next/standalone/server.js",
     "db:push": "prisma db push",
     "db:generate": "prisma generate",
-    "postbuild": "cp -r .next/static .next/standalone/.next/static && cp -r public .next/standalone/public"
+    "db:migrate": "prisma migrate dev",
+    "db:studio": "prisma studio",
+    "postbuild": "cp -r .next/static .next/standalone/.next/static && cp -r public .next/standalone/public",
+    "lint": "next lint",
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "test:coverage": "jest --coverage",
+    "test:ci": "jest --ci --coverage --reporters=default --reporters=jest-junit",
+    "type-check": "tsc --noEmit",
+    "security:audit": "npm audit --production"
   },
   "dependencies": {
     "@prisma/client": "^6.0.0",
+    "@qdrant/js-client-rest": "^1.17.0",
     "@radix-ui/react-avatar": "^1.1.0",
     "@radix-ui/react-dialog": "^1.1.0",
     "@radix-ui/react-label": "^2.1.0",
@@ -22,9 +32,12 @@
     "@radix-ui/react-tabs": "^1.1.0",
     "@radix-ui/react-toast": "^1.2.0",
     "bcryptjs": "^2.4.3",
+    "better-sqlite3": "^12.9.0",
+    "bullmq": "^5.76.6",
     "class-variance-authority": "^0.7.0",
     "clsx": "^2.1.0",
     "dotenv": "^17.4.2",
+    "ioredis": "^5.10.1",
     "jose": "^5.9.0",
     "lucide-react": "^0.460.0",
     "next": "^15.0.0",
@@ -34,17 +47,26 @@
     "react-dom": "^19.0.0",
     "sonner": "^1.7.0",
     "tailwind-merge": "^2.5.0",
-    "z-ai-web-dev-sdk": "^0.0.17"
+    "uuid": "^14.0.0",
+    "zod": "^3.25.76"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4.0.0",
+    "@testing-library/jest-dom": "^6.9.1",
+    "@testing-library/react": "^16.3.2",
     "@types/bcryptjs": "^2.4.0",
+    "@types/jest": "^30.0.0",
     "@types/node": "^22.0.0",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
+    "@types/uuid": "^10.0.0",
+    "jest": "^30.4.2",
+    "jest-environment-jsdom": "^30.4.1",
     "postcss": "^8.4.0",
     "prisma": "^6.0.0",
     "tailwindcss": "^4.0.0",
+    "ts-jest": "^29.4.9",
+    "ts-node": "^10.9.2",
     "typescript": "^5.6.0"
   }
 }

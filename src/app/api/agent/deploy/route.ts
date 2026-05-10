@@ -117,27 +117,87 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    // === FIX: Check if hosting environment already exists for this domain ===
+    // First check by domain.hostingEnvId, then by domainId to avoid unique constraint errors
+    let hostingEnv = null;
+
+    // Check if domain already has a linked hosting environment
+    if (domain.hostingEnvId) {
+      hostingEnv = await prisma.hostingEnvironment.findUnique({ where: { id: domain.hostingEnvId } });
+    }
+
+    // If not found via domain link, check by domainId (handles orphaned/unlinked cases)
+    if (!hostingEnv) {
+      hostingEnv = await prisma.hostingEnvironment.findUnique({ where: { domainId: domain.id } });
+    }
+
     // Create deployment log
     const deployLog = await prisma.deploymentLog.create({
       data: {
         userId,
-        hostingEnvId: domain.hostingEnvId,
+        hostingEnvId: hostingEnv?.id || domain.hostingEnvId,
         domainName,
         framework,
         status: 'pending',
       },
     });
 
-    // === FIX: Create HostingEnvironment record linked to the domain ===
     const rootPath = `/home/fahad/hosting/users/${userId}/${domainName}`;
 
-    // Check if hosting env already exists for this domain
-    let hostingEnv = domain.hostingEnvId
-      ? await prisma.hostingEnvironment.findUnique({ where: { id: domain.hostingEnvId } })
-      : null;
+    if (hostingEnv) {
+      // Hosting env already exists - UPDATE it instead of creating a new one
+      // This prevents the Unique constraint failed on domainId error
+      let dockerContainerId: string | null = hostingEnv.dockerContainerId;
+      let dockerStatus: string | null = hostingEnv.dockerStatus;
+      let buildLogMsg = '';
 
-    if (!hostingEnv) {
-      // Try to use the Docker-based hosting engine
+      try {
+        const hostingEngine = getHostingEngine();
+        if (hostingEngine.isDockerAvailable()) {
+          const deployResult = await hostingEngine.createHostingEnv(userId, domainName, framework);
+          if (deployResult.success) {
+            dockerContainerId = deployResult.containerId || null;
+            dockerStatus = 'running';
+            buildLogMsg = deployResult.buildLog || '';
+          } else {
+            buildLogMsg = deployResult.error || 'Docker deploy failed, using simulated env';
+          }
+        }
+      } catch (e: any) {
+        buildLogMsg = `Docker error: ${e.message}`;
+      }
+
+      // Update the existing hosting environment
+      hostingEnv = await prisma.hostingEnvironment.update({
+        where: { id: hostingEnv.id },
+        data: {
+          serverType: framework,
+          status: 'active',
+          lastDeployedAt: new Date(),
+          deployLog: buildLogMsg || `Redeployed ${framework} at ${new Date().toISOString()}`,
+          dockerContainerId: dockerContainerId ?? undefined,
+          dockerStatus: dockerStatus ?? undefined,
+        },
+      });
+
+      // Ensure the domain is linked to this hosting env
+      if (domain.hostingEnvId !== hostingEnv.id) {
+        await prisma.domain.update({
+          where: { id: domain.id },
+          data: { hostingEnvId: hostingEnv.id },
+        });
+      }
+
+      await prisma.deploymentLog.update({
+        where: { id: deployLog.id },
+        data: {
+          hostingEnvId: hostingEnv.id,
+          status: 'deploying',
+          deployLog: `Redeploying to existing hosting environment`,
+        },
+      });
+    } else {
+      // No hosting env exists - CREATE a new one
       let dockerContainerId: string | null = null;
       let dockerStatus: string | null = null;
       let buildLogMsg = '';
@@ -220,26 +280,6 @@ export async function POST(request: NextRequest) {
           hostingEnvId: hostingEnv.id,
           status: 'deploying',
           deployLog: buildLogMsg || 'Hosting environment created and linked to domain',
-        },
-      });
-    } else {
-      // Hosting env already exists - update it
-      await prisma.hostingEnvironment.update({
-        where: { id: hostingEnv.id },
-        data: {
-          serverType: framework,
-          status: 'active',
-          lastDeployedAt: new Date(),
-          deployLog: `Redeployed ${framework} at ${new Date().toISOString()}`,
-        },
-      });
-
-      await prisma.deploymentLog.update({
-        where: { id: deployLog.id },
-        data: {
-          hostingEnvId: hostingEnv.id,
-          status: 'deploying',
-          deployLog: `Redeploying to existing hosting environment`,
         },
       });
     }

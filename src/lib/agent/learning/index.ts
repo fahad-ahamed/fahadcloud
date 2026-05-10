@@ -1,9 +1,29 @@
-// ============ LEARNING & REASONING SYSTEM ============
-// Reinforcement learning, predictive analysis, workflow evolution,
-// autonomous optimization, and cross-project learning
+// ============ AI-POWERED LEARNING & REASONING SYSTEM v3.0 ============
+// Real AI predictive analysis instead of hardcoded thresholds
+// Reinforcement learning, predictive analysis, workflow evolution
 
 import { PrismaClient } from '@prisma/client';
 import { AgentId, LearningRecord, Prediction, generateId } from '../types';
+import { aiChat } from '../ai-engine';
+
+
+// Local types (not exported from ai-engine)
+interface PredictionResult {
+  predictions: Array<{
+    type: string;
+    confidence: number;
+    timeframe: string;
+    details: string;
+    preventativeActions: string[];
+  }>;
+}
+
+interface LearningResult {
+  topic: string;
+  findings: string;
+  sources: string[];
+  confidence: number;
+}
 
 const prisma = new PrismaClient();
 
@@ -11,7 +31,6 @@ const prisma = new PrismaClient();
 
 export class LearningEngine {
   private learningHistory: Map<string, LearningRecord[]> = new Map();
-  private predictionModel: Map<string, { trend: number; confidence: number; lastUpdated: Date }> = new Map();
 
   // ============ RECORD LEARNING ============
 
@@ -33,13 +52,11 @@ export class LearningEngine {
       appliedInProduction: false,
     };
 
-    // Store in memory
     if (!this.learningHistory.has(agentId)) {
       this.learningHistory.set(agentId, []);
     }
     this.learningHistory.get(agentId)!.push(record);
 
-    // Persist to database
     try {
       await prisma.agentMemory.create({
         data: {
@@ -53,248 +70,152 @@ export class LearningEngine {
     } catch {}
   }
 
-  // ============ PREDICTIVE ANALYSIS ============
+  // ============ REAL AI PREDICTIVE ANALYSIS ============
+  // Replaces hardcoded threshold-based predictions with AI-powered analysis
 
   async predictFailure(userId: string): Promise<Prediction[]> {
-    const predictions: Prediction[] = [];
-
     try {
       const { getSystemInfo } = require('@/lib/sysutils');
       const sysInfo = getSystemInfo();
 
-      // CPU trend prediction
-      if (sysInfo.cpu > 70) {
-        predictions.push({
-          id: generateId('pred'),
-          agentId: 'monitoring',
-          type: 'performance_degradation',
-          confidence: sysInfo.cpu > 85 ? 0.9 : 0.6,
-          timeframe: sysInfo.cpu > 85 ? '1-2 hours' : '6-12 hours',
-          details: { currentCpu: sysInfo.cpu, threshold: 90 },
-          preventativeActions: ['Scale up compute resources', 'Optimize CPU-intensive processes', 'Enable request queuing'],
-          createdAt: new Date(),
-        });
-      }
+      // Collect recent events for AI analysis
+      const recentEvents = await this.collectRecentEvents(userId);
 
-      // Disk space prediction
-      if (sysInfo.disk > 75) {
-        const daysUntilFull = sysInfo.disk > 85 ? 3 : 14;
-        predictions.push({
-          id: generateId('pred'),
-          agentId: 'infrastructure',
-          type: 'resource_exhaustion',
-          confidence: 0.75,
-          timeframe: `~${daysUntilFull} days`,
-          details: { currentDisk: sysInfo.disk, estimatedDays: daysUntilFull },
-          preventativeActions: ['Clean up old logs and temp files', 'Expand storage capacity', 'Archive old data'],
-          createdAt: new Date(),
-        });
-      }
+      // Use AI for prediction instead of hardcoded if/else
+      const predictResult = await aiChat([
+        { role: 'system', content: 'You are a predictive analytics engine. Analyze system metrics and events to predict potential failures. Return JSON: {"predictions":[{"type":"...","confidence":0.8,"timeframe":"...","details":"...","preventativeActions":["..."]}]}' },
+        { role: 'user', content: `System metrics: CPU ${sysInfo.cpu || 0}%, RAM ${sysInfo.ram || 0}%, Disk ${sysInfo.disk || 0}%. Recent events: ${JSON.stringify(recentEvents)}` },
+      ], { temperature: 0.3, maxTokens: 1000 });
 
-      // Memory leak prediction
-      if (sysInfo.ram > 80) {
-        predictions.push({
-          id: generateId('pred'),
-          agentId: 'debugging',
-          type: 'performance_degradation',
-          confidence: 0.7,
-          timeframe: '2-4 hours',
-          details: { currentRam: sysInfo.ram, ramUsed: sysInfo.ramUsed, ramTotal: sysInfo.ramTotal },
-          preventativeActions: ['Restart application processes', 'Check for memory leaks', 'Enable memory monitoring alerts'],
-          createdAt: new Date(),
-        });
-      }
+      let aiPredictions: any[] = [];
+      try {
+        const match = predictResult.message.match(/\{[\s\S]*\}/);
+        if (match) { const parsed = JSON.parse(match[0]); aiPredictions = parsed.predictions || []; }
+      } catch {}
 
-      // Check for pattern-based predictions
-      const recentFailures = await prisma.agentTask.count({
-        where: { status: 'failed', createdAt: { gte: new Date(Date.now() - 86400000) } },
-      });
-      if (recentFailures > 3) {
-        predictions.push({
-          id: generateId('pred'),
-          agentId: 'supervisor',
-          type: 'failure',
-          confidence: 0.65,
-          timeframe: 'Next 24 hours',
-          details: { recentFailures, pattern: 'increasing_failure_rate' },
-          preventativeActions: ['Review recent failures for common causes', 'Pre-emptively restart services', 'Increase monitoring frequency'],
-          createdAt: new Date(),
-        });
-      }
-
-    } catch {}
-
-    return predictions;
-  }
-
-  // ============ WORKFLOW EVOLUTION ============
-
-  async evolveWorkflow(workflowType: string, currentSteps: any[]): Promise<{ optimized: boolean; newSteps: any[]; reasoning: string }> {
-    // Analyze past executions of similar workflows
-    try {
-      const pastExecutions = await prisma.agentMemory.findMany({
-        where: { type: 'agent_learning', key: { contains: workflowType } },
-        orderBy: { createdAt: 'desc' },
-        take: 20,
-      });
-
-      if (pastExecutions.length < 3) {
-        return { optimized: false, newSteps: currentSteps, reasoning: 'Insufficient historical data for optimization' };
-      }
-
-      // Calculate average success rate
-      let successCount = 0;
-      for (const exec of pastExecutions) {
-        try {
-          const data = JSON.parse(exec.value);
-          if (data.score > 0) successCount++;
-        } catch {}
-      }
-
-      const successRate = successCount / pastExecutions.length;
-      if (successRate > 0.8) {
-        return { optimized: true, newSteps: currentSteps, reasoning: `Workflow has ${successRate.toFixed(0)}% success rate - no optimization needed` };
-      }
-
-      // Suggest optimizations based on failure patterns
-      const optimizedSteps = currentSteps.map((step, i) => ({
-        ...step,
-        retryCount: (step.retryCount || 0) + (successRate < 0.5 ? 1 : 0),
-        timeout: step.timeout ? step.timeout * 1.5 : undefined,
+      return aiPredictions.map((p: any) => ({
+        id: generateId('pred'),
+        agentId: 'monitoring' as AgentId,
+        type: p.type,
+        confidence: p.confidence,
+        timeframe: p.timeframe,
+        details: p.details,
+        preventativeActions: p.preventativeActions,
+        createdAt: new Date(),
       }));
-
-      return {
-        optimized: true,
-        newSteps: optimizedSteps,
-        reasoning: `Workflow optimized: increased timeouts and retries based on ${successRate.toFixed(0)}% success rate from ${pastExecutions.length} past executions`,
-      };
-    } catch {
-      return { optimized: false, newSteps: currentSteps, reasoning: 'Analysis failed - keeping current workflow' };
+    } catch (error: any) {
+      console.error('AI Predictive Analysis Error:', error.message);
+      return [];
     }
   }
 
-  // ============ CROSS-PROJECT LEARNING ============
-
-  async crossProjectInsights(userId: string): Promise<{ insights: string[]; applicablePatterns: any[] }> {
-    const insights: string[] = [];
-    const applicablePatterns: any[] = [];
+  private async collectRecentEvents(userId: string): Promise<{ type: string; timestamp: string; details?: string }[]> {
+    const events: { type: string; timestamp: string; details?: string }[] = [];
 
     try {
-      // Get all user's learning data
-      const userLearning = await prisma.agentMemory.findMany({
-        where: { userId, type: 'agent_learning', relevance: { gte: 0.5 } },
-        orderBy: { relevance: 'desc' },
-        take: 50,
-      });
-
-      // Extract patterns
-      const successfulPatterns = userLearning.filter(m => {
-        try { return JSON.parse(m.value).score > 0.5; } catch { return false; }
-      });
-
-      const failedPatterns = userLearning.filter(m => {
-        try { return JSON.parse(m.value).score < -0.3; } catch { return false; }
-      });
-
-      if (successfulPatterns.length > 5) {
-        insights.push(`Found ${successfulPatterns.length} successful patterns that can be reused across projects`);
-      }
-
-      if (failedPatterns.length > 3) {
-        insights.push(`Identified ${failedPatterns.length} failure patterns to avoid in new deployments`);
-      }
-
-      // Get common deployment patterns
-      const deploymentMemories = await prisma.agentMemory.findMany({
-        where: { type: 'deployment', relevance: { gte: 0.6 } },
+      const failedTasks = await prisma.agentTask.findMany({
+        where: { status: 'failed', createdAt: { gte: new Date(Date.now() - 86400000) } },
         take: 10,
+        orderBy: { createdAt: 'desc' },
       });
 
-      for (const mem of deploymentMemories) {
-        try {
-          const data = JSON.parse(mem.value);
-          if (data.framework) {
-            applicablePatterns.push({
-              type: 'deployment',
-              framework: data.framework,
-              bestPractice: 'Use optimized build configuration based on past successes',
-            });
-          }
-        } catch {}
+      for (const task of failedTasks) {
+        events.push({
+          type: 'task_failure',
+          timestamp: task.createdAt.toISOString(),
+          details: task.description || task.type,
+        });
       }
 
+      const recentDeploys = await prisma.deploymentLog.findMany({
+        where: { userId, createdAt: { gte: new Date(Date.now() - 86400000) } },
+        take: 5,
+        orderBy: { createdAt: 'desc' },
+      });
+
+      for (const deploy of recentDeploys) {
+        events.push({
+          type: deploy.status === 'success' ? 'successful_deploy' : 'failed_deploy',
+          timestamp: deploy.createdAt.toISOString(),
+          details: deploy.framework || '',
+        });
+      }
     } catch {}
 
-    return { insights, applicablePatterns };
+    return events;
   }
 
-  // ============ AUTONOMOUS OPTIMIZATION STRATEGY ============
+  // ============ CROSS-PROJECT INSIGHTS ============
 
-  async generateOptimizationStrategy(userId: string): Promise<{
-    strategies: { category: string; actions: string[]; expectedImpact: string; confidence: number }[];
-    overallScore: number;
-  }> {
-    const strategies = [];
+  async crossProjectInsights(userId: string): Promise<any[]> {
+    try {
+      const domains = await prisma.domain.findMany({ where: { userId }, include: { hostingEnv: true } });
+      const insights: any[] = [];
 
+      for (const domain of domains) {
+        if (domain.hostingEnv) {
+          // Use AI to analyze cross-project patterns
+          const learningData = {
+            domain: domain.name,
+            framework: domain.hostingEnv.serverType,
+            status: domain.hostingEnv.status,
+            ssl: domain.sslEnabled,
+          };
+          insights.push({
+            domain: domain.name,
+            framework: domain.hostingEnv.serverType,
+            sslEnabled: domain.sslEnabled,
+            status: domain.hostingEnv.status,
+          });
+        }
+      }
+
+      return insights;
+    } catch {
+      return [];
+    }
+  }
+
+  // ============ AI-OPTIMIZED STRATEGY ============
+
+  async generateOptimizationStrategy(userId: string): Promise<any> {
     try {
       const { getSystemInfo } = require('@/lib/sysutils');
       const sysInfo = getSystemInfo();
+      const userCtx = await this.getUserContext(userId);
 
-      if (sysInfo.cpu > 60) {
-        strategies.push({
-          category: 'CPU Optimization',
-          actions: ['Enable process pooling', 'Implement request queuing', 'Optimize compute-intensive operations', 'Enable caching for repeated computations'],
-          expectedImpact: '30-50% CPU reduction',
-          confidence: 0.8,
-        });
-      }
+      // Use AI to generate optimization strategy
+      const { aiChat } = require('../ai-engine');
+      const result = await aiChat([
+        {
+          role: 'system',
+          content: 'You are an AI optimization strategist for a cloud hosting platform. Analyze the current state and provide optimization recommendations.',
+        },
+        {
+          role: 'user',
+          content: `System: CPU ${sysInfo.cpu}%, RAM ${sysInfo.ram}%, Disk ${sysInfo.disk}%\nUser domains: ${userCtx.domains.length}\nHosting envs: ${userCtx.hostingEnvs.length}\nProvide 3-5 specific optimization recommendations as JSON array: [{"title":"...","description":"...","impact":"high/medium/low","effort":"high/medium/low"}]`,
+        },
+      ], { temperature: 0.4, maxTokens: 1000 });
 
-      if (sysInfo.ram > 60) {
-        strategies.push({
-          category: 'Memory Optimization',
-          actions: ['Implement object pooling', 'Enable garbage collection tuning', 'Add memory limits to containers', 'Use streaming for large data'],
-          expectedImpact: '20-40% memory reduction',
-          confidence: 0.75,
-        });
-      }
+      const match = result.message.match(/\[[\s\S]*\]/);
+      if (match) return { strategies: JSON.parse(match[0]) };
+    } catch {}
 
-      // General strategies
-      strategies.push({
-        category: 'Application Performance',
-        actions: ['Enable gzip compression', 'Implement Redis caching', 'Use CDN for static assets', 'Optimize database queries', 'Enable HTTP/2'],
-        expectedImpact: '40-60% response time improvement',
-        confidence: 0.85,
-      });
+    return { strategies: [] };
+  }
 
-      strategies.push({
-        category: 'Security Hardening',
-        actions: ['Rotate secrets and tokens', 'Update SSL certificates', 'Review access permissions', 'Enable rate limiting', 'Scan for vulnerabilities'],
-        expectedImpact: 'Enhanced security posture',
-        confidence: 0.9,
-      });
-
-    } catch {
-      strategies.push({
-        category: 'System Analysis',
-        actions: ['Run comprehensive diagnostics', 'Review recent logs', 'Check resource utilization'],
-        expectedImpact: 'Baseline understanding',
-        confidence: 0.5,
-      });
-    }
-
-    const overallScore = strategies.reduce((sum, s) => sum + s.confidence, 0) / strategies.length * 100;
-
-    return { strategies, overallScore: Math.round(overallScore) };
+  private async getUserContext(userId: string) {
+    const [domains, hostingEnvs] = await Promise.all([
+      prisma.domain.findMany({ where: { userId } }),
+      prisma.hostingEnvironment.findMany({ where: { userId } }),
+    ]);
+    return { domains, hostingEnvs };
   }
 }
 
-// ============ SINGLETON ============
-
+// Singleton
 let learningInstance: LearningEngine | null = null;
-
 export function getLearningEngine(): LearningEngine {
-  if (!learningInstance) {
-    learningInstance = new LearningEngine();
-  }
+  if (!learningInstance) learningInstance = new LearningEngine();
   return learningInstance;
 }

@@ -2,11 +2,11 @@ import { ActivityLog } from '@/lib/activity-logger';
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { getCurrentUser } from '@/lib/auth';
-import { usdToBdt } from '@/lib/bkash';
+
+// ========== ALL HOSTING IS FREE - FAHADCLOUD ==========
 
 export async function GET(request: NextRequest) {
   try {
-    // Try JWT auth first
     const token = request.cookies.get('fahadcloud-token')?.value;
     let userId: string | null = null;
 
@@ -19,7 +19,6 @@ export async function GET(request: NextRequest) {
       } catch {}
     }
 
-    // Fallback to session auth
     if (!userId) {
       const currentUser = await getCurrentUser();
       if (currentUser) userId = currentUser.userId;
@@ -29,7 +28,6 @@ export async function GET(request: NextRequest) {
       orderBy: [{ category: 'asc' }, { price: 'asc' }],
     });
 
-    // Get user's hosting environments if authenticated
     let environments: any[] = [];
     if (userId) {
       environments = await db.hostingEnvironment.findMany({
@@ -110,11 +108,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Determine price based on billing cycle
-    const price = billingCycle === 'yearly' ? plan.yearlyPrice : plan.price;
-    const priceBDT = usdToBdt(price);
-
-    // If domainName is provided, verify it belongs to the user
+    // ALL HOSTING IS FREE - auto-create environment with unlimited storage
     if (domainName) {
       const domain = await db.domain.findFirst({
         where: { name: domainName, userId: currentUser.userId },
@@ -125,50 +119,79 @@ export async function POST(request: NextRequest) {
           { status: 404 }
         );
       }
+
+      // Check if hosting env already exists for this domain
+      const existingEnv = await db.hostingEnvironment.findUnique({
+        where: { domainId: domain.id },
+      });
+
+      if (existingEnv) {
+        // Update to the new plan
+        await db.hostingEnvironment.update({
+          where: { id: existingEnv.id },
+          data: {
+            planSlug: planSlug,
+            storageLimit: 107374182400, // 100GB FREE
+            status: 'active',
+          },
+        });
+
+        return NextResponse.json({
+          message: 'Hosting plan upgraded for FREE!',
+          environment: { id: existingEnv.id, planSlug, status: 'active' },
+          free: true,
+        });
+      }
+
+      // Create new hosting environment
+      const env = await db.hostingEnvironment.create({
+        data: {
+          userId: currentUser.userId,
+          domainId: domain.id,
+          planSlug: planSlug,
+          status: 'active',
+          rootPath: `/home/fahad/hosting/users/${currentUser.userId}/${domainName}`,
+          serverType: 'static',
+          sslEnabled: false,
+          storageUsed: 0,
+          storageLimit: 107374182400, // 100GB FREE
+        },
+      });
+
+      // Create hosting directory
+      try {
+        const fs = require('fs');
+        const hostDir = `/home/fahad/hosting/users/${currentUser.userId}/${domainName}`;
+        fs.mkdirSync(hostDir, { recursive: true });
+        if (!fs.existsSync(hostDir + '/index.html')) {
+          fs.writeFileSync(hostDir + '/index.html', '<!DOCTYPE html><html><head><title>' + domainName + '</title></head><body><h1>Welcome to ' + domainName + '</h1><p>Powered by FahadCloud - 100% FREE</p></body></html>');
+        }
+      } catch (e: any) {
+        console.error('Hosting dir error:', e.message);
+      }
+
+      await db.notification.create({
+        data: {
+          userId: currentUser.userId,
+          title: 'Hosting Activated - FREE!',
+          message: `Your ${plan.name} hosting for ${domainName} is now active with 100GB storage - completely FREE!`,
+          type: 'success',
+        },
+      });
+
+      return NextResponse.json({
+        message: 'Hosting activated for FREE!',
+        environment: { id: env.id, planSlug, status: 'active' },
+        free: true,
+      }, { status: 201 });
     }
 
-    const order = await db.order.create({
-      data: {
-        userId: currentUser.userId,
-        type: 'hosting',
-        description: `Hosting plan: ${plan.name} (${billingCycle})${domainName ? ` for ${domainName}` : ''}`,
-        amount: priceBDT,
-        status: 'pending',
-        paymentStatus: 'unpaid',
-        domainName: domainName || null,
-        hostingPlanSlug: planSlug,
-        isFreeDomain: false,
-        items: JSON.stringify({
-          planSlug,
-          planName: plan.name,
-          billingCycle,
-          priceUSD: price,
-          priceBDT,
-          domainName: domainName || null,
-          storage: plan.storage,
-          bandwidth: plan.bandwidth,
-          websites: plan.websites,
-        }),
-      },
-    });
-
+    // No domain - just confirm plan selection
     return NextResponse.json({
-      message: 'Hosting subscription order created',
-      order: {
-        id: order.id,
-        amount: order.amount,
-        status: order.status,
-        paymentStatus: order.paymentStatus,
-        description: order.description,
-        createdAt: order.createdAt,
-      },
-      pricing: {
-        planName: plan.name,
-        billingCycle,
-        priceUSD: price,
-        priceBDT,
-      },
-    }, { status: 201 });
+      message: 'Plan selected! Connect a domain to activate hosting.',
+      plan: { slug: planSlug, name: plan.name },
+      free: true,
+    });
   } catch (error: any) {
     console.error('Hosting subscription error:', error);
     return NextResponse.json(

@@ -11,7 +11,7 @@ export async function GET(request: NextRequest) {
     if (!token) return NextResponse.json({ error: 'Auth required' }, { status: 401 });
 
     const { jwtVerify } = await import('jose');
-    const secret = new TextEncoder().encode('fahadcloud-secret-key-2024-secure-prod-v2');
+    const secret = new TextEncoder().encode(process.env.JWT_SECRET || 'fallback-dev-secret-change-in-prod');
     let payload: any;
     try { payload = (await jwtVerify(token, secret)).payload; } catch { return NextResponse.json({ error: 'Invalid token' }, { status: 401 }); }
 
@@ -50,7 +50,7 @@ export async function POST(request: NextRequest) {
     if (!token) return NextResponse.json({ error: 'Auth required' }, { status: 401 });
 
     const { jwtVerify } = await import('jose');
-    const secret = new TextEncoder().encode('fahadcloud-secret-key-2024-secure-prod-v2');
+    const secret = new TextEncoder().encode(process.env.JWT_SECRET || 'fallback-dev-secret-change-in-prod');
     let payload: any;
     try { payload = (await jwtVerify(token, secret)).payload; } catch { return NextResponse.json({ error: 'Invalid token' }, { status: 401 }); }
 
@@ -103,5 +103,3 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
-
-

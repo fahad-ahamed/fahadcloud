@@ -3,76 +3,89 @@ generator client {
 }
 
 datasource db {
-  provider = "sqlite"
+  provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 
+// ============ CORE USER MODELS ============
+
 model User {
-  id            String    @id @default(cuid())
-  email         String    @unique
-  password      String
-  firstName     String
-  lastName      String
-  company       String?
-  phone         String?
-  address       String?
-  city          String?
-  country       String?
-  avatar        String?
-  role          String    @default("customer")
-  adminRole     String?
-  balance       Float     @default(0)
-  storageLimit  Float     @default(5368709120)
-  storageUsed   Float     @default(0)
-  twoFactorSecret String?
-  twoFactorEnabled Boolean @default(false)
-  emailVerified  Boolean  @default(false)
-  lastLoginAt   DateTime?
-  loginIp       String?
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
-  domains       Domain[]
-  orders        Order[]
-  cartItems     CartItem[]
-  notifications Notification[]
-  payments      Payment[]
-  files         FileEntry[]
-  hostingEnvs   HostingEnvironment[]
-  databases     UserDatabase[]
-  agentSessions AgentSession[]
-  agentMemories AgentMemory[]
+  id               String    @id @default(cuid())
+  email            String    @unique
+  password         String
+  firstName        String
+  lastName         String
+  company          String?
+  phone            String?
+  address          String?
+  city             String?
+  country          String?
+  avatar           String?
+  role             String    @default("customer")
+  adminRole        String?
+  balance          Float     @default(0)
+  storageLimit     Float     @default(5368709120)
+  storageUsed      Float     @default(0)
+  twoFactorSecret  String?
+  twoFactorEnabled Boolean   @default(false)
+  emailVerified    Boolean   @default(false)
+  lastLoginAt      DateTime?
+  loginIp          String?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  domains          Domain[]
+  orders           Order[]
+  cartItems        CartItem[]
+  notifications    Notification[]
+  payments         Payment[]
+  files            FileEntry[]
+  hostingEnvs      HostingEnvironment[]
+  databases        UserDatabase[]
+  agentSessions    AgentSession[]
+  agentMemories    AgentMemory[]
+  auditLogs        AuditLog[]
+  learningSessions LearningSession[]
+  webhooks          Webhook[]
+  apiKeys           ApiKey[]
+  twoFactorBackup   TwoFactorBackup?
+
+  @@index([email])
+  @@index([role])
 }
 
 model Domain {
-  id              String   @id @default(cuid())
-  name            String   @unique
-  tld             String
-  sld             String
-  isFree          Boolean  @default(false)
-  status          String   @default("active")
-  registeredAt    DateTime @default(now())
-  expiresAt       DateTime
-  autoRenew       Boolean  @default(true)
-  privacyProtect  Boolean  @default(false)
-  locked          Boolean  @default(true)
-  nameserver1     String   @default("ns1.fahadcloud.com")
-  nameserver2     String   @default("ns2.fahadcloud.com")
-  whoisPrivacy    Boolean  @default(false)
-  sslEnabled      Boolean  @default(false)
-  sslExpiry       DateTime?
-  sslProvider     String?
-  dnsZoneConfigured Boolean @default(false)
-  registrarName   String?
-  registrarId     String?
-  userId          String
-  orderId         String?
-  hostingEnvId    String?  @unique
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
-  user            User     @relation(fields: [userId], references: [id])
-  order           Order?   @relation(fields: [orderId], references: [id])
-  dnsRecords      DnsRecord[]
-  hostingEnv      HostingEnvironment? @relation(fields: [hostingEnvId], references: [id])
+  id                String    @id @default(cuid())
+  name              String    @unique
+  tld               String
+  sld               String
+  isFree            Boolean   @default(false)
+  status            String    @default("active")
+  registeredAt      DateTime  @default(now())
+  expiresAt         DateTime
+  autoRenew         Boolean   @default(true)
+  privacyProtect    Boolean   @default(false)
+  locked            Boolean   @default(true)
+  nameserver1       String    @default("ns1.fahadcloud.com")
+  nameserver2       String    @default("ns2.fahadcloud.com")
+  whoisPrivacy      Boolean   @default(false)
+  sslEnabled        Boolean   @default(false)
+  sslExpiry         DateTime?
+  sslProvider       String?
+  dnsZoneConfigured Boolean   @default(false)
+  registrarName     String?
+  registrarId       String?
+  userId            String
+  orderId           String?
+  hostingEnvId      String?   @unique
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  user       User                @relation(fields: [userId], references: [id])
+  order      Order?              @relation(fields: [orderId], references: [id])
+  dnsRecords DnsRecord[]
+  hostingEnv HostingEnvironment? @relation(fields: [hostingEnvId], references: [id])
+
   @@index([userId])
   @@index([name])
   @@index([status])
@@ -89,7 +102,9 @@ model DnsRecord {
   proxied   Boolean  @default(false)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-  domain    Domain   @relation(fields: [domainId], references: [id], onDelete: Cascade)
+
+  domain Domain @relation(fields: [domainId], references: [id], onDelete: Cascade)
+
   @@index([domainId])
 }
 
@@ -125,74 +140,82 @@ model HostingPlan {
 }
 
 model HostingEnvironment {
-  id          String   @id @default(cuid())
-  userId      String
-  domainId    String?  @unique
-  planSlug    String   @default("starter")
-  status      String   @default("active")
-  rootPath    String
-  serverType  String   @default("static")
-  nodeVersion String?
-  phpVersion  String?
-  pythonVersion String?
-  sslEnabled  Boolean  @default(false)
-  sslExpiry   DateTime?
-  bandwidthUsed Float  @default(0)
-  storageUsed Float    @default(0)
-  storageLimit Float   @default(5368709120)
+  id                String    @id @default(cuid())
+  userId            String
+  domainId          String?   @unique
+  planSlug          String    @default("starter")
+  status            String    @default("active")
+  rootPath          String
+  serverType        String    @default("static")
+  nodeVersion       String?
+  phpVersion        String?
+  pythonVersion     String?
+  sslEnabled        Boolean   @default(false)
+  sslExpiry         DateTime?
+  bandwidthUsed     Float     @default(0)
+  storageUsed       Float     @default(0)
+  storageLimit      Float     @default(5368709120)
   dockerContainerId String?
-  dockerStatus String?
-  lastDeployedAt DateTime?
-  deployLog   String?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  user        User     @relation(fields: [userId], references: [id])
-  domain      Domain?  @relation()
-  backups     Backup[]
+  dockerStatus      String?
+  lastDeployedAt    DateTime?
+  deployLog         String?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  user    User     @relation(fields: [userId], references: [id])
+  domain  Domain?  @relation()
+  backups Backup[]
+
   @@index([userId])
   @@index([status])
 }
 
 model Backup {
-  id          String   @id @default(cuid())
+  id           String   @id @default(cuid())
   hostingEnvId String
-  fileName    String
-  fileSize    Int
-  type        String   @default("manual")
-  status      String   @default("completed")
-  createdAt   DateTime @default(now())
-  hostingEnv  HostingEnvironment @relation(fields: [hostingEnvId], references: [id], onDelete: Cascade)
+  fileName     String
+  fileSize     Int
+  type         String   @default("manual")
+  status       String   @default("completed")
+  createdAt    DateTime @default(now())
+
+  hostingEnv HostingEnvironment @relation(fields: [hostingEnvId], references: [id], onDelete: Cascade)
+
   @@index([hostingEnvId])
 }
 
 model UserDatabase {
-  id          String   @id @default(cuid())
-  userId      String
+  id           String   @id @default(cuid())
+  userId       String
   hostingEnvId String?
-  name        String
-  dbType      String   @default("sqlite")
-  size        Int      @default(0)
-  status      String   @default("active")
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  user        User     @relation(fields: [userId], references: [id])
+  name         String
+  dbType       String   @default("sqlite")
+  size         Int      @default(0)
+  status       String   @default("active")
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id])
+
   @@index([userId])
 }
 
 model FileEntry {
-  id          String   @id @default(cuid())
-  userId      String
+  id           String   @id @default(cuid())
+  userId       String
   hostingEnvId String?
-  name        String
-  path        String
-  size        Int      @default(0)
-  mimeType    String   @default("application/octet-stream")
-  isPublic    Boolean  @default(false)
-  isDirectory Boolean  @default(false)
-  parentId    String?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  user        User     @relation(fields: [userId], references: [id])
+  name         String
+  path         String
+  size         Int      @default(0)
+  mimeType     String   @default("application/octet-stream")
+  isPublic     Boolean  @default(false)
+  isDirectory  Boolean  @default(false)
+  parentId     String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id])
+
   @@index([userId])
   @@index([hostingEnvId])
   @@index([parentId])
@@ -223,9 +246,11 @@ model Order {
   adminNotes      String?
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
-  user            User      @relation(fields: [userId], references: [id])
-  domain          Domain[]
-  payment         Payment?
+
+  user    User     @relation(fields: [userId], references: [id])
+  domain  Domain[]
+  payment Payment?
+
   @@index([userId])
   @@index([status])
   @@index([paymentStatus])
@@ -256,9 +281,11 @@ model Payment {
   userAgent       String?
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
-  order           Order     @relation(fields: [orderId], references: [id])
-  user            User      @relation(fields: [userId], references: [id])
-  logs            PaymentLog[]
+
+  order Order        @relation(fields: [orderId], references: [id])
+  user  User         @relation(fields: [userId], references: [id])
+  logs  PaymentLog[]
+
   @@index([orderId])
   @@index([userId])
   @@index([trxId])
@@ -273,7 +300,9 @@ model PaymentLog {
   performedBy String?
   ipAddress   String?
   createdAt   DateTime @default(now())
-  payment     Payment  @relation(fields: [paymentId], references: [id], onDelete: Cascade)
+
+  payment Payment @relation(fields: [paymentId], references: [id], onDelete: Cascade)
+
   @@index([paymentId])
   @@index([action])
 }
@@ -288,7 +317,9 @@ model CartItem {
   quantity  Int      @default(1)
   details   String?
   createdAt DateTime @default(now())
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
   @@index([userId])
 }
 
@@ -300,91 +331,134 @@ model Notification {
   type      String   @default("info")
   read      Boolean  @default(false)
   createdAt DateTime @default(now())
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
   @@index([userId])
   @@index([read])
 }
 
 model AdminLog {
-  id          String   @id @default(cuid())
-  adminId     String
-  action      String
-  targetType  String?
-  targetId    String?
-  details     String?
-  ipAddress   String?
-  createdAt   DateTime @default(now())
+  id         String   @id @default(cuid())
+  adminId    String
+  action     String
+  targetType String?
+  targetId   String?
+  details    String?
+  ipAddress  String?
+  createdAt  DateTime @default(now())
+
   @@index([adminId])
   @@index([action])
   @@index([targetType])
 }
 
 model RateLimitEntry {
-  id        String   @id @default(cuid())
-  ipAddress String
-  action    String
-  count     Int      @default(1)
+  id          String   @id @default(cuid())
+  ipAddress   String
+  action      String
+  count       Int      @default(1)
   windowStart DateTime @default(now())
+
   @@unique([ipAddress, action])
   @@index([ipAddress])
+}
+
+model EmailVerification {
+  id        String   @id @default(cuid())
+  email     String
+  otp       String
+  type      String   @default("registration")
+  verified  Boolean  @default(false)
+  expiresAt DateTime
+  userId    String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([email, type])
+  @@index([otp])
+  @@index([expiresAt])
+}
+
+model ActionVerification {
+  id        String   @id @default(cuid())
+  userId    String
+  action    String
+  otp       String
+  verified  Boolean  @default(false)
+  expiresAt DateTime
+  metadata  String?
+  createdAt DateTime @default(now())
+
+  @@index([userId, action])
+  @@index([otp])
+  @@index([expiresAt])
 }
 
 // ============ AI AGENT MODELS ============
 
 model AgentSession {
-  id          String   @id @default(cuid())
-  userId      String
-  title       String   @default("New Conversation")
-  status      String   @default("active")  // active, archived, deleted
-  context     String   @default("{}") // JSON: conversation context, current task state
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  messages    AgentMessage[]
-  tasks       AgentTask[]
+  id        String   @id @default(cuid())
+  userId    String
+  title     String   @default("New Conversation")
+  status    String   @default("active")
+  context   String   @default("{}")
+  agentType String   @default("general")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user     User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  messages AgentMessage[]
+  tasks    AgentTask[]
+
   @@index([userId])
   @@index([status])
+  @@index([agentType])
 }
 
 model AgentMessage {
   id          String   @id @default(cuid())
   sessionId   String
-  role        String   // user, assistant, system, tool
+  role        String
   content     String
-  toolCalls   String?  // JSON: array of tool calls made
-  toolResults String?  // JSON: array of tool results
-  metadata    String?  // JSON: extra metadata (tokens, model, timing)
+  toolCalls   String?
+  toolResults String?
+  metadata    String?
   createdAt   DateTime @default(now())
-  session     AgentSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  session AgentSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
   @@index([sessionId])
   @@index([role])
   @@index([createdAt])
 }
 
 model AgentTask {
-  id          String   @id @default(cuid())
-  sessionId   String
-  userId      String
-  type        String   // deploy, ssl_setup, dns_configure, domain_register, database_create, shell_execute, monitoring, optimization
-  status      String   @default("planned") // planned, approved, running, completed, failed, cancelled, rolled_back
-  priority    String   @default("medium") // low, medium, high, critical
-  description String
-  plan        String?  // JSON: multi-step execution plan
-  currentStep Int      @default(0)
-  totalSteps  Int      @default(0)
-  result      String?
-  error       String?
-  requiresApproval Boolean @default(false)
-  approvedBy  String?
-  approvedAt  DateTime?
-  rollbackPlan String? // JSON: rollback steps if task fails
-  rollbackStatus String? // pending, executed, failed
-  startedAt   DateTime?
-  completedAt DateTime?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  session     AgentSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
-  logs        AgentTaskLog[]
+  id               String    @id @default(cuid())
+  sessionId        String
+  userId           String
+  type             String
+  status           String    @default("planned")
+  priority         String    @default("medium")
+  description      String
+  plan             String?
+  currentStep      Int       @default(0)
+  totalSteps       Int       @default(0)
+  result           String?
+  error            String?
+  requiresApproval Boolean   @default(false)
+  approvedBy       String?
+  approvedAt       DateTime?
+  rollbackPlan     String?
+  rollbackStatus   String?
+  startedAt        DateTime?
+  completedAt      DateTime?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  session AgentSession   @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  logs    AgentTaskLog[]
+
   @@index([sessionId])
   @@index([userId])
   @@index([type])
@@ -392,34 +466,38 @@ model AgentTask {
 }
 
 model AgentTaskLog {
-  id          String   @id @default(cuid())
-  taskId      String
-  step        Int
-  action      String
-  input       String?  // JSON: input data
-  output      String?  // JSON: output data
-  status      String   @default("running") // running, success, failed, skipped
-  error       String?
-  duration    Int      @default(0) // milliseconds
-  createdAt   DateTime @default(now())
-  task        AgentTask @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  id        String   @id @default(cuid())
+  taskId    String
+  step      Int
+  action    String
+  input     String?
+  output    String?
+  status    String   @default("running")
+  error     String?
+  duration  Int      @default(0)
+  createdAt DateTime @default(now())
+
+  task AgentTask @relation(fields: [taskId], references: [id], onDelete: Cascade)
+
   @@index([taskId])
   @@index([status])
 }
 
 model AgentMemory {
-  id          String   @id @default(cuid())
-  userId      String
-  type        String   // preference, project, deployment, domain, configuration, workflow, error_solution
-  key         String
-  value       String   // JSON value
-  relevance   Float    @default(1.0) // 0.0 to 1.0 relevance score
-  accessCount Int      @default(0)
-  lastAccessed DateTime @default(now())
-  expiresAt   DateTime? // optional expiration
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id           String    @id @default(cuid())
+  userId       String
+  type         String
+  key          String
+  value        String
+  relevance    Float     @default(1.0)
+  accessCount  Int       @default(0)
+  lastAccessed DateTime  @default(now())
+  expiresAt    DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
   @@index([userId])
   @@index([type])
   @@index([key])
@@ -427,19 +505,20 @@ model AgentMemory {
 }
 
 model AgentToolExecution {
-  id          String   @id @default(cuid())
-  userId      String
-  taskId      String?
-  sessionId   String?
-  tool        String   // tool name
-  input       String   // JSON: tool input
-  output      String?  // JSON: tool output
-  status      String   @default("pending") // pending, approved, executed, failed, denied
-  riskLevel   String   @default("low") // low, medium, high, critical
-  approvedBy  String?
-  executedAt  DateTime?
-  duration    Int      @default(0)
-  createdAt   DateTime @default(now())
+  id         String    @id @default(cuid())
+  userId     String
+  taskId     String?
+  sessionId  String?
+  tool       String
+  input      String
+  output     String?
+  status     String    @default("pending")
+  riskLevel  String    @default("low")
+  approvedBy String?
+  executedAt DateTime?
+  duration   Int       @default(0)
+  createdAt  DateTime  @default(now())
+
   @@index([userId])
   @@index([tool])
   @@index([status])
@@ -447,103 +526,441 @@ model AgentToolExecution {
 }
 
 model AgentSecurityPolicy {
-  id              String   @id @default(cuid())
-  name            String   @unique
-  description     String
-  rules           String   // JSON: security rules
-  isActive        Boolean  @default(true)
-  createdById     String?
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  id          String   @id @default(cuid())
+  name        String   @unique
+  description String
+  rules       String
+  isActive    Boolean  @default(true)
+  createdById String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 }
 
 model AgentSystemConfig {
   id          String   @id @default(cuid())
   key         String   @unique
-  value       String   // JSON value
+  value       String
   description String?
   updatedBy   String?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 }
 
-model MonitoringMetric {
+// ============ AI KNOWLEDGE & LEARNING MODELS ============
+
+model LearningSession {
+  id              String    @id @default(cuid())
+  userId          String
+  topic           String
+  description     String?
+  status          String    @default("researching") // researching, analyzing, storing, completed, failed
+  sourcesCount    Int       @default(0)
+  knowledgeStored Int       @default(0)
+  researchDepth   String    @default("standard") // quick, standard, deep
+  findings        String? // JSON: research findings
+  error           String?
+  startedAt       DateTime  @default(now())
+  completedAt     DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  user      User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  resources LearningResource[]
+  insights  LearningInsight[]
+
+  @@index([userId])
+  @@index([status])
+  @@index([topic])
+}
+
+model LearningResource {
+  id             String   @id @default(cuid())
+  sessionId      String
+  url            String?
+  title          String
+  content        String // Full content from the source
+  sourceType     String   @default("web") // web, doc, api, manual
+  relevanceScore Float    @default(0.5)
+  processed      Boolean  @default(false)
+  createdAt      DateTime @default(now())
+
+  session LearningSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  @@index([sessionId])
+  @@index([sourceType])
+}
+
+model LearningInsight {
   id          String   @id @default(cuid())
-  hostId      String   @default("default")
-  metricType  String   // cpu, ram, disk, network, uptime, app_health
-  value       Float
-  unit        String   // percent, bytes, mb, seconds, status
-  metadata    String?  // JSON: additional data
-  recordedAt  DateTime @default(now())
+  sessionId   String
+  insight     String
+  category    String // fact, pattern, best_practice, warning, concept
+  confidence  Float    @default(0.5)
+  embeddingId String? // Reference to Qdrant point ID
+  createdAt   DateTime @default(now())
+
+  session LearningSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  @@index([sessionId])
+  @@index([category])
+}
+
+// ============ AI KNOWLEDGE BASE ============
+
+model KnowledgeEntry {
+  id             String   @id @default(cuid())
+  userId         String?
+  domain         String // coding, security, devops, ui, debugging, etc.
+  topic          String
+  content        String
+  summary        String?
+  source         String   @default("ai_learning") // ai_learning, manual, web_research, documentation
+  confidence     Float    @default(0.5)
+  accessCount    Int      @default(0)
+  embeddingId    String? // Reference to Qdrant vector DB point ID
+  tags           String   @default("[]") // JSON array of tags
+  relatedEntries String   @default("[]") // JSON array of related entry IDs
+  isVerified     Boolean  @default(false)
+  verifiedBy     String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@index([domain])
+  @@index([topic])
+  @@index([source])
+  @@index([userId])
+  @@index([confidence])
+}
+
+// ============ BUG DETECTION & AUTO FIX ============
+
+model BugReport {
+  id                String    @id @default(cuid())
+  userId            String?
+  type              String // broken_api, missing_import, dead_code, memory_leak, security_vuln, performance, syntax_error
+  severity          String    @default("medium") // low, medium, high, critical
+  status            String    @default("detected") // detected, analyzing, fixing, fixed, failed, ignored
+  filePath          String?
+  lineStart         Int?
+  lineEnd           Int?
+  description       String
+  codeSnippet       String?
+  suggestedFix      String?
+  appliedFix        String?
+  fixResult         String?
+  detectorAgent     String    @default("bug_detector")
+  fixerAgent        String?
+  autoFixed         Boolean   @default(false)
+  rollbackAvailable Boolean   @default(false)
+  rollbackData      String? // JSON: original code for rollback
+  scanId            String? // Reference to the scan that found this bug
+  detectedAt        DateTime  @default(now())
+  fixedAt           DateTime?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  @@index([type])
+  @@index([severity])
+  @@index([status])
+  @@index([userId])
+  @@index([detectedAt])
+}
+
+model BugScan {
+  id           String    @id @default(cuid())
+  userId       String?
+  status       String    @default("running") // running, completed, failed
+  scope        String    @default("full") // full, quick, targeted
+  targetPath   String?
+  totalFiles   Int       @default(0)
+  filesScanned Int       @default(0)
+  bugsFound    Int       @default(0)
+  bugsFixed    Int       @default(0)
+  scanDuration Int       @default(0) // milliseconds
+  results      String? // JSON: detailed scan results
+  error        String?
+  startedAt    DateTime  @default(now())
+  completedAt  DateTime?
+  createdAt    DateTime  @default(now())
+
+  @@index([status])
+  @@index([userId])
+}
+
+// ============ AGENT REGISTRY & MONITORING ============
+
+model AgentRegistry {
+  id              String   @id @default(cuid())
+  agentId         String   @unique
+  name            String
+  type            String // coding, security, debug, ui, devops, research, self_improvement, general
+  description     String
+  capabilities    String   @default("[]") // JSON array
+  status          String   @default("idle") // idle, busy, learning, offline, error
+  totalTasks      Int      @default(0)
+  completedTasks  Int      @default(0)
+  failedTasks     Int      @default(0)
+  avgResponseTime Float    @default(0) // milliseconds
+  lastActiveAt    DateTime @default(now())
+  config          String   @default("{}") // JSON: agent-specific config
+  version         String   @default("1.0.0")
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([type])
+  @@index([status])
+}
+
+model AgentActivityLog {
+  id        String   @id @default(cuid())
+  agentId   String
+  action    String
+  details   String?
+  duration  Int      @default(0) // milliseconds
+  status    String   @default("success") // success, failure, timeout
+  metadata  String? // JSON
+  createdAt DateTime @default(now())
+
+  @@index([agentId])
+  @@index([action])
+  @@index([status])
+  @@index([createdAt])
+}
+
+// ============ MONITORING & METRICS ============
+
+model MonitoringMetric {
+  id         String   @id @default(cuid())
+  hostId     String   @default("default")
+  metricType String
+  value      Float
+  unit       String
+  metadata   String?
+  recordedAt DateTime @default(now())
+
   @@index([hostId])
   @@index([metricType])
   @@index([recordedAt])
 }
 
 model DeploymentLog {
-  id            String   @id @default(cuid())
-  userId        String
-  hostingEnvId  String?
-  domainName    String?
-  framework     String?
-  status        String   @default("pending") // pending, building, deploying, live, failed, rolled_back
-  buildLog      String?
-  deployLog     String?
-  errorLog      String?
-  buildDuration Int?
+  id             String   @id @default(cuid())
+  userId         String
+  hostingEnvId   String?
+  domainName     String?
+  framework      String?
+  status         String   @default("pending")
+  buildLog       String?
+  deployLog      String?
+  errorLog       String?
+  buildDuration  Int?
   deployDuration Int?
   rollbackStatus String?
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
   @@index([userId])
   @@index([hostingEnvId])
   @@index([status])
 }
 
-model EmailVerification {
-  id        String   @id @default(cuid())
-  email     String
-  otp       String
-  type      String   @default("registration") // registration, password_change, email_change, account_delete
-  verified  Boolean  @default(false)
-  expiresAt DateTime
-  userId    String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  @@index([email, type])
-  @@index([otp])
-  @@index([expiresAt])
+// ============ AUDIT & SECURITY ============
+
+model AuditLog {
+  id         String   @id @default(cuid())
+  userId     String?
+  action     String
+  category   String // auth, data_access, modification, deletion, system, ai_agent, security
+  targetType String?
+  targetId   String?
+  details    String?
+  ipAddress  String?
+  userAgent  String?
+  riskLevel  String   @default("low") // low, medium, high, critical
+  createdAt  DateTime @default(now())
+
+  user User? @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+  @@index([action])
+  @@index([category])
+  @@index([riskLevel])
+  @@index([createdAt])
 }
 
-model ActionVerification {
-  id          String   @id @default(cuid())
-  userId      String
-  action      String   // password_change, email_change, account_delete, domain_transfer, hosting_delete
-  otp         String
-  verified    Boolean  @default(false)
-  expiresAt   DateTime
-  metadata    String?  // JSON: extra data (new email, etc.)
-  createdAt   DateTime @default(now())
-  @@index([userId, action])
-  @@index([otp])
-  @@index([expiresAt])
+model SecurityAlert {
+  id         String    @id @default(cuid())
+  type       String // intrusion_attempt, brute_force, suspicious_activity, data_breach, api_abuse
+  severity   String    @default("medium")
+  status     String    @default("active") // active, investigated, resolved, false_positive
+  source     String? // IP address or user
+  target     String? // What was targeted
+  details    String?
+  resolvedBy String?
+  resolvedAt DateTime?
+  createdAt  DateTime  @default(now())
+
+  @@index([type])
+  @@index([severity])
+  @@index([status])
+  @@index([createdAt])
+}
+
+model DatabaseBackup {
+  id             String    @id @default(cuid())
+  type           String    @default("scheduled") // scheduled, manual, pre_migration
+  status         String    @default("pending") // pending, running, completed, failed
+  fileSize       Int       @default(0)
+  filePath       String?
+  duration       Int       @default(0) // milliseconds
+  tablesIncluded String    @default("[]") // JSON array
+  error          String?
+  startedAt      DateTime  @default(now())
+  completedAt    DateTime?
+  createdAt      DateTime  @default(now())
+
+  @@index([type])
+  @@index([status])
+}
+
+// ============ QUEUE & SCHEDULING ============
+
+model ScheduledJob {
+  id           String    @id @default(cuid())
+  name         String
+  type         String // backup, scan, cleanup, report, maintenance
+  schedule     String // cron expression
+  status       String    @default("active") // active, paused, disabled
+  lastRunAt    DateTime?
+  nextRunAt    DateTime?
+  lastResult   String?
+  failureCount Int       @default(0)
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  @@index([type])
+  @@index([status])
+  @@index([nextRunAt])
 }
 
 // ============ USER ACTIVITY LOGGING ============
 
 model UserActivityLog {
-  id          String   @id @default(cuid())
-  userId      String
-  action      String
-  category    String
-  details     String?
-  ipAddress   String?
-  userAgent   String?
-  metadata    String?
-  createdAt   DateTime @default(now())
-  
+  id        String   @id @default(cuid())
+  userId    String
+  action    String
+  category  String
+  details   String?
+  ipAddress String?
+  userAgent String?
+  metadata  String?
+  createdAt DateTime @default(now())
+
   @@index([userId])
   @@index([action])
   @@index([category])
   @@index([createdAt])
+}
+
+// ============ ULTRA FEATURES (v5.0.0) ============
+
+model Webhook {
+  id           String   @id @default(cuid())
+  userId       String
+  url          String
+  events       String
+  secret       String
+  description  String?
+  active       Boolean  @default(true)
+  lastTrigger  DateTime?
+  successCount Int      @default(0)
+  failCount    Int      @default(0)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([active])
+}
+
+model ApiKey {
+  id          String    @id @default(cuid())
+  userId      String
+  name        String
+  keyHash     String    @unique
+  keyPrefix   String
+  permissions String
+  expiresAt   DateTime?
+  lastUsedAt  DateTime?
+  active      Boolean   @default(true)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([keyHash])
+  @@index([active])
+}
+
+model TwoFactorBackup {
+  id        String   @id @default(cuid())
+  userId    String   @unique
+  codes     String
+  usedCount Int      @default(0)
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model ActivityFeed {
+  id        String   @id @default(cuid())
+  userId    String?
+  type      String
+  title     String
+  message   String
+  metadata  String?
+  priority  String   @default("info")
+  read      Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([type])
+  @@index([priority])
+  @@index([createdAt])
+}
+
+model CronJob {
+  id          String   @id @default(cuid())
+  name        String   @unique
+  schedule    String
+  command     String
+  enabled     Boolean  @default(true)
+  lastRunAt   DateTime?
+  nextRunAt   DateTime?
+  lastStatus  String?
+  runCount    Int      @default(0)
+  timeout     Int      @default(300)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([enabled])
+  @@index([nextRunAt])
+}
+
+model FirewallRule {
+  id        String   @id @default(cuid())
+  name      String
+  type      String   @default("allow")
+  ip        String?
+  port      String?
+  protocol  String?
+  priority  Int      @default(100)
+  enabled   Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([enabled])
+  @@index([type])
 }

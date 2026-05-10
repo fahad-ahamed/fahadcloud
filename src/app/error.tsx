@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect } from "react";
+import { AlertTriangle, RefreshCw, Home } from "lucide-react";
+import { Button } from "@/components/ui/button";
 
 export default function Error({
   error,
@@ -10,32 +12,36 @@ export default function Error({
   reset: () => void;
 }) {
   useEffect(() => {
-    console.error("CLIENT ERROR:", error.message);
-    console.error("STACK:", error.stack);
+    console.error("Application error:", error);
+    // Log to monitoring system
+    fetch("/api/health", { method: "HEAD" }).catch(() => {});
   }, [error]);
 
   return (
-    <div style={{ padding: "2rem", maxWidth: "900px", margin: "0 auto", fontFamily: "monospace" }}>
-      <h2 style={{ color: "red", marginBottom: "1rem", fontSize: "20px" }}>Application Error</h2>
-      <div style={{ background: "#fee2e2", padding: "1rem", borderRadius: "8px", marginBottom: "1rem", border: "2px solid red" }}>
-        <p style={{ fontWeight: "bold", marginBottom: "0.5rem" }}>Error Message:</p>
-        <pre style={{ whiteSpace: "pre-wrap", fontSize: "14px", color: "#991b1b" }}>{error.message}</pre>
-      </div>
-      {error.stack && (
-        <div style={{ background: "#f5f5f5", padding: "1rem", borderRadius: "8px", marginBottom: "1rem" }}>
-          <p style={{ fontWeight: "bold", marginBottom: "0.5rem" }}>Stack Trace:</p>
-          <pre style={{ whiteSpace: "pre-wrap", fontSize: "12px", color: "#555" }}>{error.stack}</pre>
+    <div className="min-h-screen flex items-center justify-center bg-background p-4" role="alert">
+      <div className="text-center space-y-6 max-w-md">
+        <div className="space-y-2">
+          <AlertTriangle className="mx-auto h-16 w-16 text-destructive" aria-hidden="true" />
+          <h1 className="text-2xl font-bold text-foreground">Something went wrong</h1>
+          <p className="text-muted-foreground">
+            We encountered an unexpected error. Our team has been notified.
+          </p>
         </div>
-      )}
-      {error.digest && (
-        <p style={{ fontSize: "12px", color: "#999" }}>Digest: {error.digest}</p>
-      )}
-      <button
-        onClick={reset}
-        style={{ marginTop: "1rem", padding: "0.5rem 1rem", background: "#059669", color: "white", border: "none", borderRadius: "6px", cursor: "pointer", fontSize: "14px" }}
-      >
-        Try again
-      </button>
+        <div className="flex gap-3 justify-center">
+          <Button onClick={reset} variant="outline" className="gap-2">
+            <RefreshCw className="h-4 w-4" aria-hidden="true" />
+            Try Again
+          </Button>
+          <Button onClick={() => (window.location.href = "/")} className="gap-2">
+            <Home className="h-4 w-4" aria-hidden="true" />
+            Go Home
+          </Button>
+        </div>
+        {error.digest && (
+          <p className="text-xs text-muted-foreground">Error ID: {error.digest}</p>
+        )}
+      </div>
     </div>
   );
 }
+

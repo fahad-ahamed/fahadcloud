@@ -8,7 +8,7 @@ import {
   ArrowRight, Sparkles, Bot, Cpu, Globe, Database, RotateCcw,
   TrendingUp, Lock, Activity, GitBranch, Workflow, Eye,
   ChevronRight, Play, CheckCircle2, Clock, Users, BarChart3,
-  Layers, Cog, BookOpen, GraduationCap,
+  Layers, Cog, BookOpen, GraduationCap, Search, Wrench, Code, Palette,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import LoginForm from '@/features/auth/LoginForm';
@@ -37,6 +37,13 @@ const AGENTS = [
   { icon: Brain, name: 'Learning Agent', desc: 'Predictive analysis, pattern recognition, workflow optimization, and continuous learning from infrastructure data.', color: 'from-emerald-500 to-teal-500', status: 'active', tasks: '12K' },
   { icon: RotateCcw, name: 'Recovery Agent', desc: 'Automated backup management, point-in-time recovery, disaster recovery orchestration, and data integrity verification.', color: 'from-teal-500 to-cyan-500', status: 'active', tasks: '1.9K' },
   { icon: TrendingUp, name: 'Optimization Agent', desc: 'Performance profiling, resource right-sizing, cost optimization, and intelligent auto-scaling recommendations.', color: 'from-pink-500 to-rose-500', status: 'active', tasks: '7.4K' },
+  { icon: Code, name: 'Coding Agent', desc: 'AI-powered code generation, refactoring, and review across multiple languages.', color: 'from-blue-500 to-cyan-500', status: 'ai', tasks: 'NEW' },
+  { icon: Palette, name: 'UI Agent', desc: 'AI-powered UI/UX design with component generation and accessibility analysis.', color: 'from-pink-500 to-rose-500', status: 'ai', tasks: 'NEW' },
+  { icon: BookOpen, name: 'Research Agent', desc: 'AI-powered web research with real-time information gathering and knowledge synthesis.', color: 'from-teal-500 to-cyan-500', status: 'ai', tasks: 'NEW' },
+  { icon: Cog, name: 'Self-Improvement Agent', desc: 'AI that continuously analyzes and improves the FahadCloud system itself.', color: 'from-fuchsia-500 to-purple-500', status: 'ai', tasks: 'NEW' },
+  { icon: Search, name: 'Bug Detector Agent', desc: 'AI-powered continuous scanning for broken APIs, dead code, and security vulnerabilities.', color: 'from-red-400 to-orange-500', status: 'ai', tasks: 'NEW' },
+  { icon: Wrench, name: 'Auto Fix Agent', desc: 'AI-powered automatic bug fixing with patch generation and safe rollback.', color: 'from-green-500 to-emerald-500', status: 'ai', tasks: 'NEW' },
+
 ];
 
 const AUTO_LEARNING_AGENT = {
@@ -136,7 +143,7 @@ export default function AiLanding({ onGetStarted, onBack }: AiLandingProps) {
               className="bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-base sm:text-lg px-6 sm:px-8 py-3 shadow-xl shadow-emerald-500/25 w-full sm:w-auto whitespace-nowrap"
               onClick={handleStartFree}
             >
-              Start Free <ArrowRight className="w-5 h-5 ml-2" />
+              Start FREE <ArrowRight className="w-5 h-5 ml-2" />
             </Button>
             <Button 
               size="lg" 
@@ -162,7 +169,7 @@ export default function AiLanding({ onGetStarted, onBack }: AiLandingProps) {
                 </div>
                 <div>
                   <div className="text-lg sm:text-xl font-bold text-white">{s.value}</div>
-                  <div className="text-xs text-slate-500">{s.label}</div>
+                  <div className="text-xs text-slate-300">{s.label}</div>
                 </div>
               </div>
             ))}
@@ -225,7 +232,7 @@ export default function AiLanding({ onGetStarted, onBack }: AiLandingProps) {
                     <div className="flex items-center gap-1.5">
                       <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
                       <span className="text-[10px] text-emerald-400 font-medium">{AUTO_LEARNING_AGENT.status}</span>
-                      <span className="text-[10px] text-slate-500 ml-auto">{AUTO_LEARNING_AGENT.tasks} tasks</span>
+                      <span className="text-[10px] text-slate-400 ml-auto">{AUTO_LEARNING_AGENT.tasks} tasks</span>
                     </div>
                   </div>
                 </div>
@@ -251,7 +258,7 @@ export default function AiLanding({ onGetStarted, onBack }: AiLandingProps) {
                       <div className="flex items-center gap-1.5">
                         <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
                         <span className="text-[10px] text-emerald-400 font-medium">{agent.status}</span>
-                        <span className="text-[10px] text-slate-500 ml-auto">{agent.tasks} tasks</span>
+                        <span className="text-[10px] text-slate-400 ml-auto">{agent.tasks} tasks</span>
                       </div>
                     </div>
                   </div>
@@ -306,7 +313,7 @@ export default function AiLanding({ onGetStarted, onBack }: AiLandingProps) {
             <div className="relative z-10">
               <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold mb-3">Ready to Launch?</h2>
               <p className="text-slate-400 text-sm sm:text-base mb-6 sm:mb-8 max-w-lg mx-auto">
-                Deploy your first project in minutes with 14 AI agents managing everything for you. No credit card required.
+                Deploy your first project in minutes with 14 AI agents managing everything for you. 100% FREE. No credit card required. Unlimited everything.
               </p>
               <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center">
                 <Button 
@@ -314,7 +321,7 @@ export default function AiLanding({ onGetStarted, onBack }: AiLandingProps) {
                   className="bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-base sm:text-lg px-6 sm:px-8 shadow-xl shadow-emerald-500/25 w-full sm:w-auto"
                   onClick={handleStartFree}
                 >
-                  Start Free <ArrowRight className="w-5 h-5 ml-2" />
+                  Start FREE <ArrowRight className="w-5 h-5 ml-2" />
                 </Button>
                 <Button 
                   size="lg" 
@@ -332,7 +339,7 @@ export default function AiLanding({ onGetStarted, onBack }: AiLandingProps) {
 
       {/* Footer */}
       <footer className="relative z-10 py-6 sm:py-8 px-4 border-t border-white/5 text-center">
-        <p className="text-slate-600 text-xs sm:text-sm">&copy; 2025 FahadCloud. Powered by 14 AI Agents. Built on AWS.</p>
+        <p className="text-slate-400 text-xs sm:text-sm">&copy; 2025 FahadCloud. Powered by 14 AI Agents. Built on AWS.</p>
       </footer>
 
       {/* Auth Dialogs - FIXED: Now included in AiLanding */}

@@ -3,6 +3,8 @@ import { db } from '@/lib/db';
 import { orderRepository } from '@/lib/repositories';
 import { requireAuth, authErrorResponse } from '@/lib/middleware';
 
+// ========== ALL ORDERS ARE FREE - AUTO APPROVED ==========
+
 export async function GET(request: NextRequest) {
   try {
     const auth = await requireAuth(request);
@@ -19,19 +21,14 @@ export async function GET(request: NextRequest) {
         id: o.id,
         type: o.type,
         description: o.description,
-        amount: o.amount,
-        status: o.status,
-        paymentStatus: o.paymentStatus,
+        amount: 0, // Always show 0 - everything is free
+        status: 'paid',
+        paymentStatus: 'paid',
         domainName: o.domainName,
         tld: o.tld,
         years: o.years,
-        isFreeDomain: o.isFreeDomain,
+        isFreeDomain: true,
         hostingPlanSlug: o.hostingPlanSlug,
-        bKashNumber: o.bKashNumber,
-        bKashTrxId: o.bKashTrxId,
-        domain: o.domain,
-        payment: o.payment,
-        adminNotes: o.adminNotes,
         createdAt: o.createdAt,
         updatedAt: o.updatedAt,
       })),
@@ -60,58 +57,44 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Check pricing
-    const tldPricing = await db.tldPricing.findUnique({ where: { tld: tld || '.com' } });
-    if (!tldPricing) {
-      return NextResponse.json(
-        { error: `Pricing not available for ${tld || '.com'}` },
-        { status: 400 }
-      );
-    }
-
-    const registerPrice = tldPricing.promo && tldPricing.promoPrice 
-      ? tldPricing.promoPrice 
-      : tldPricing.registerPrice;
-    const totalPrice = registerPrice * years;
-
-    // Convert to BDT
-    const amountBDT = Math.round(totalPrice * 110 * 100) / 100;
-
+    // Create order as FREE and auto-approve
     const order = await orderRepository.create({
       data: {
         userId: auth.user!.userId,
         type,
-        description: `Domain registration: ${domainName} for ${years} year(s)`,
-        amount: amountBDT,
-        status: 'pending',
-        paymentStatus: 'unpaid',
+        description: `FREE: ${domainName} for ${years} year(s)`,
+        amount: 0,
+        status: 'paid',
+        paymentStatus: 'paid',
         domainName,
         tld: tld || '.com',
         years,
-        isFreeDomain: false,
+        isFreeDomain: true,
+        verifiedAt: new Date(),
         items: JSON.stringify({
           domainName,
           tld: tld || '.com',
           years,
-          pricePerYear: registerPrice,
-          totalPrice,
-          amountBDT,
+          pricePerYear: 0,
+          totalPrice: 0,
+          free: true,
         }),
       },
     });
 
     return NextResponse.json({
-      message: 'Order created successfully',
+      message: 'Order created and approved - FREE!',
       order: {
         id: order.id,
         type: order.type,
         description: order.description,
-        amount: order.amount,
-        status: order.status,
-        paymentStatus: order.paymentStatus,
+        amount: 0,
+        status: 'paid',
+        paymentStatus: 'paid',
         domainName: order.domainName,
         tld: order.tld,
         years: order.years,
+        free: true,
         createdAt: order.createdAt,
       },
     }, { status: 201 });

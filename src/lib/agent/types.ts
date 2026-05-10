@@ -1,12 +1,15 @@
 // ============ MULTI-AGENT TYPES & DEFINITIONS ============
-// FahadCloud Advanced Autonomous Multi-Agent Cloud Intelligence System v2.0
-// 14 Specialized AI Agents with Auto Learning
+// FahadCloud Advanced Autonomous Multi-Agent Cloud Intelligence System v3.0
+// 20+ Specialized AI Agents with Real AI Power
 
 export type AgentId = 
   | 'devops' | 'security' | 'deployment' | 'monitoring' 
   | 'debugging' | 'infrastructure' | 'database' | 'optimization'
   | 'recovery' | 'scaling' | 'dns_domain' | 'payment' | 'supervisor'
-  | 'auto_learning';
+  | 'auto_learning'
+  // NEW AGENTS v3.0
+  | 'coding' | 'ui_design' | 'research' | 'self_improvement'
+  | 'bug_detector' | 'bug_fixer' | 'devops_advanced' | 'chat';
 
 export interface AgentDefinition {
   id: AgentId;
@@ -22,22 +25,26 @@ export interface AgentDefinition {
   icon: string;
   color: string;
   version: string;
-  intelligenceLevel: number; // 1-10
+  intelligenceLevel: number;
   learningEnabled: boolean;
+  isAiPowered: boolean; // NEW: marks real AI agents
+  aiModel?: string; // NEW: which AI model this agent uses
 }
 
 export const AGENT_DEFINITIONS: Record<AgentId, AgentDefinition> = {
+  // ============ ORIGINAL AGENTS (UPGRADED TO REAL AI) ============
+  
   devops: {
     id: 'devops',
     name: 'DevOps Agent',
-    description: 'Manages CI/CD pipelines, build processes, deployment workflows, and DevOps automation with intelligent rollback capabilities.',
+    description: 'AI-powered DevOps automation with intelligent CI/CD pipeline management, build optimization, and deployment workflows.',
     capabilities: [
       'ci_cd_pipeline_management', 'build_optimization', 'deployment_automation',
       'environment_configuration', 'release_management', 'rollback_execution',
       'artifact_management', 'dependency_management', 'container_orchestration',
       'multi_environment_deploy', 'blue_green_deployment', 'canary_release',
     ],
-    specializations: ['react', 'nextjs', 'vue', 'nodejs', 'python', 'php', 'laravel', 'wordpress', 'docker', 'kubernetes'],
+    specializations: ['react', 'nextjs', 'vue', 'nodejs', 'python', 'php', 'docker', 'kubernetes'],
     riskLevel: 'medium',
     canAutoExecute: true,
     requiresApproval: ['production_deploy', 'database_migration', 'config_change'],
@@ -45,14 +52,17 @@ export const AGENT_DEFINITIONS: Record<AgentId, AgentDefinition> = {
     maxConcurrentTasks: 5,
     icon: 'Rocket',
     color: 'from-orange-500 to-red-500',
-    version: '2.0',
+    version: '3.0',
     intelligenceLevel: 9,
     learningEnabled: true,
+    isAiPowered: true,
+    aiModel: 'z-ai-chat',
   },
+  
   security: {
     id: 'security',
     name: 'Security Agent',
-    description: 'Autonomous security monitoring, threat detection, intrusion prevention, vulnerability scanning, and compliance enforcement.',
+    description: 'AI-powered autonomous security with real threat detection, vulnerability scanning, and behavioral anomaly analysis.',
     capabilities: [
       'threat_detection', 'intrusion_prevention', 'vulnerability_scanning',
       'malware_scanning', 'firewall_optimization', 'ssl_management',
@@ -60,7 +70,7 @@ export const AGENT_DEFINITIONS: Record<AgentId, AgentDefinition> = {
       'exploit_prevention', 'secret_rotation', 'compliance_checking',
       'zero_day_detection', 'rate_limit_enforcement', 'ip_reputation_check',
     ],
-    specializations: ['network_security', 'application_security', 'infrastructure_security', 'compliance', 'owasp'],
+    specializations: ['network_security', 'application_security', 'infrastructure_security', 'compliance'],
     riskLevel: 'high',
     canAutoExecute: true,
     requiresApproval: ['block_ip', 'disable_service', 'quarantine_resource'],
@@ -68,22 +78,24 @@ export const AGENT_DEFINITIONS: Record<AgentId, AgentDefinition> = {
     maxConcurrentTasks: 10,
     icon: 'Shield',
     color: 'from-red-500 to-red-700',
-    version: '2.0',
+    version: '3.0',
     intelligenceLevel: 10,
     learningEnabled: true,
+    isAiPowered: true,
+    aiModel: 'z-ai-chat',
   },
+  
   deployment: {
     id: 'deployment',
     name: 'Deployment Agent',
-    description: 'Handles one-click deployments, framework detection, build optimization, and deployment verification with zero-downtime guarantees.',
+    description: 'AI-powered deployment with intelligent framework detection, build optimization, and zero-downtime deployment.',
     capabilities: [
       'framework_detection', 'build_execution', 'deployment_verification',
       'rollback_management', 'blue_green_deploy', 'canary_deploy',
       'static_site_deploy', 'container_deploy', 'ssl_provisioning',
       'github_sync', 'environment_setup', 'dependency_installation',
-      'auto_scaling_config', 'health_check_verification',
     ],
-    specializations: ['react', 'nextjs', 'nuxt', 'vue', 'nodejs', 'python', 'php', 'docker', 'static'],
+    specializations: ['react', 'nextjs', 'nuxt', 'vue', 'nodejs', 'python', 'php', 'docker'],
     riskLevel: 'medium',
     canAutoExecute: true,
     requiresApproval: ['production_deploy', 'database_migration'],
@@ -91,293 +103,617 @@ export const AGENT_DEFINITIONS: Record<AgentId, AgentDefinition> = {
     maxConcurrentTasks: 8,
     icon: 'Rocket',
     color: 'from-orange-500 to-amber-500',
-    version: '2.0',
+    version: '3.0',
     intelligenceLevel: 9,
     learningEnabled: true,
+    isAiPowered: true,
+    aiModel: 'z-ai-chat',
   },
+  
   monitoring: {
     id: 'monitoring',
     name: 'Monitoring Agent',
-    description: '24/7 real-time monitoring with intelligent alerting, anomaly detection, predictive scaling, and comprehensive health scoring.',
+    description: 'AI-enhanced monitoring with predictive alerting, anomaly detection, and intelligent scaling recommendations.',
     capabilities: [
-      'system_metrics_collection', 'application_health_monitoring', 'alert_management',
-      'anomaly_detection', 'performance_profiling', 'resource_tracking',
-      'log_aggregation', 'uptime_monitoring', 'capacity_planning',
-      'predictive_scaling', 'custom_dashboards', 'incident_correlation',
+      'cpu_monitoring', 'ram_monitoring', 'disk_monitoring', 'network_monitoring',
+      'anomaly_detection', 'predictive_alerting', 'auto_scaling_recommendation',
+      'health_check', 'uptime_monitoring', 'performance_profiling',
+      'log_analysis', 'metric_aggregation', 'custom_alerts',
     ],
-    specializations: ['cpu_monitoring', 'memory_monitoring', 'disk_monitoring', 'network_monitoring', 'application_monitoring'],
+    specializations: ['infrastructure', 'application', 'network', 'database'],
+    riskLevel: 'low',
+    canAutoExecute: true,
+    requiresApproval: [],
+    cooldownMs: 1000,
+    maxConcurrentTasks: 15,
+    icon: 'Activity',
+    color: 'from-yellow-500 to-orange-500',
+    version: '3.0',
+    intelligenceLevel: 8,
+    learningEnabled: true,
+    isAiPowered: true,
+    aiModel: 'z-ai-chat',
+  },
+  
+  debugging: {
+    id: 'debugging',
+    name: 'Debug Agent',
+    description: 'AI-powered debugging with intelligent error analysis, stack trace interpretation, and root cause identification.',
+    capabilities: [
+      'error_analysis', 'stack_trace_interpretation', 'root_cause_analysis',
+      'log_correlation', 'performance_debugging', 'memory_leak_detection',
+      'network_debugging', 'configuration_debugging', 'dependency_conflict_resolution',
+    ],
+    specializations: ['javascript', 'typescript', 'python', 'nodejs', 'react', 'nextjs'],
+    riskLevel: 'low',
+    canAutoExecute: true,
+    requiresApproval: [],
+    cooldownMs: 2000,
+    maxConcurrentTasks: 8,
+    icon: 'Bug',
+    color: 'from-purple-500 to-pink-500',
+    version: '3.0',
+    intelligenceLevel: 9,
+    learningEnabled: true,
+    isAiPowered: true,
+    aiModel: 'z-ai-chat',
+  },
+  
+  infrastructure: {
+    id: 'infrastructure',
+    name: 'Infrastructure Agent',
+    description: 'AI-powered infrastructure management with Docker/K8s orchestration and infrastructure-as-code generation.',
+    capabilities: [
+      'docker_management', 'kubernetes_orchestration', 'server_provisioning',
+      'cluster_management', 'iac_generation', 'network_configuration',
+      'load_balancing', 'reverse_proxy', 'storage_management',
+    ],
+    specializations: ['docker', 'kubernetes', 'nginx', 'linux', 'networking'],
+    riskLevel: 'high',
+    canAutoExecute: true,
+    requiresApproval: ['destroy_container', 'modify_network', 'change_proxy'],
+    cooldownMs: 5000,
+    maxConcurrentTasks: 5,
+    icon: 'Server',
+    color: 'from-gray-500 to-gray-700',
+    version: '3.0',
+    intelligenceLevel: 9,
+    learningEnabled: true,
+    isAiPowered: true,
+    aiModel: 'z-ai-chat',
+  },
+  
+  database: {
+    id: 'database',
+    name: 'Database Agent',
+    description: 'AI-powered database management with query optimization, schema analysis, and automated migrations.',
+    capabilities: [
+      'database_creation', 'migration_management', 'backup_scheduling',
+      'query_optimization', 'schema_analysis', 'performance_tuning',
+      'replication_setup', 'connection_pooling', 'index_optimization',
+    ],
+    specializations: ['sqlite', 'postgresql', 'mysql', 'mongodb', 'redis'],
+    riskLevel: 'medium',
+    canAutoExecute: true,
+    requiresApproval: ['drop_database', 'destructive_migration'],
+    cooldownMs: 5000,
+    maxConcurrentTasks: 5,
+    icon: 'Database',
+    color: 'from-cyan-500 to-blue-500',
+    version: '3.0',
+    intelligenceLevel: 9,
+    learningEnabled: true,
+    isAiPowered: true,
+    aiModel: 'z-ai-chat',
+  },
+  
+  optimization: {
+    id: 'optimization',
+    name: 'Optimization Agent',
+    description: 'AI-powered performance optimization with intelligent caching strategies and resource optimization.',
+    capabilities: [
+      'performance_optimization', 'caching_strategy', 'resource_optimization',
+      'bundle_optimization', 'image_optimization', 'database_optimization',
+      'cdn_configuration', 'lazy_loading', 'code_splitting',
+    ],
+    specializations: ['frontend', 'backend', 'database', 'network'],
+    riskLevel: 'low',
+    canAutoExecute: true,
+    requiresApproval: [],
+    cooldownMs: 5000,
+    maxConcurrentTasks: 5,
+    icon: 'Zap',
+    color: 'from-amber-500 to-yellow-500',
+    version: '3.0',
+    intelligenceLevel: 8,
+    learningEnabled: true,
+    isAiPowered: true,
+    aiModel: 'z-ai-chat',
+  },
+  
+  recovery: {
+    id: 'recovery',
+    name: 'Recovery Agent',
+    description: 'AI-powered disaster recovery with automated backup restoration and service healing.',
+    capabilities: [
+      'disaster_recovery', 'backup_restoration', 'service_healing',
+      'failover_management', 'data_recovery', 'configuration_recovery',
+    ],
+    specializations: ['backup', 'restoration', 'failover'],
+    riskLevel: 'high',
+    canAutoExecute: true,
+    requiresApproval: ['restore_from_backup', 'failover_switch'],
+    cooldownMs: 10000,
+    maxConcurrentTasks: 3,
+    icon: 'RotateCcw',
+    color: 'from-emerald-500 to-teal-500',
+    version: '3.0',
+    intelligenceLevel: 9,
+    learningEnabled: true,
+    isAiPowered: true,
+    aiModel: 'z-ai-chat',
+  },
+  
+  scaling: {
+    id: 'scaling',
+    name: 'Scaling Agent',
+    description: 'AI-powered auto-scaling with predictive resource provisioning and load balancing.',
+    capabilities: [
+      'auto_scaling', 'horizontal_scaling', 'vertical_scaling',
+      'load_balancing', 'resource_provisioning', 'capacity_planning',
+    ],
+    specializations: ['horizontal', 'vertical', 'cluster', 'serverless'],
+    riskLevel: 'medium',
+    canAutoExecute: true,
+    requiresApproval: ['scale_down', 'provision_new_instance'],
+    cooldownMs: 10000,
+    maxConcurrentTasks: 3,
+    icon: 'TrendingUp',
+    color: 'from-blue-500 to-indigo-500',
+    version: '3.0',
+    intelligenceLevel: 8,
+    learningEnabled: true,
+    isAiPowered: true,
+    aiModel: 'z-ai-chat',
+  },
+  
+  dns_domain: {
+    id: 'dns_domain',
+    name: 'DNS Agent',
+    description: 'AI-powered DNS management with automatic configuration, zone management, and real DNS resolution serving.',
+    capabilities: [
+      'dns_configuration', 'zone_management', 'record_optimization',
+      'propagation_verification', 'dns_serving', 'dnssec_management',
+    ],
+    specializations: ['bind', 'dnsmasq', 'cloudflare', 'route53'],
+    riskLevel: 'medium',
+    canAutoExecute: true,
+    requiresApproval: ['change_nameservers', 'delete_zone'],
+    cooldownMs: 3000,
+    maxConcurrentTasks: 8,
+    icon: 'Globe',
+    color: 'from-sky-500 to-blue-500',
+    version: '3.0',
+    intelligenceLevel: 8,
+    learningEnabled: true,
+    isAiPowered: true,
+    aiModel: 'z-ai-chat',
+  },
+  
+  payment: {
+    id: 'payment',
+    name: 'Payment Agent',
+    description: 'AI-enhanced payment processing with fraud detection and billing intelligence.',
+    capabilities: [
+      'payment_processing', 'fraud_detection', 'billing_management',
+      'invoice_generation', 'subscription_management', 'refund_processing',
+    ],
+    specializations: ['stripe', 'bkash', 'nagad', 'paypal'],
+    riskLevel: 'high',
+    canAutoExecute: false,
+    requiresApproval: ['process_refund', 'apply_discount', 'change_pricing'],
+    cooldownMs: 5000,
+    maxConcurrentTasks: 5,
+    icon: 'CreditCard',
+    color: 'from-green-500 to-emerald-500',
+    version: '3.0',
+    intelligenceLevel: 7,
+    learningEnabled: true,
+    isAiPowered: true,
+    aiModel: 'z-ai-chat',
+  },
+  
+  supervisor: {
+    id: 'supervisor',
+    name: 'Supervisor Agent',
+    description: 'AI master supervisor that monitors all agents, handles escalations, and ensures system reliability.',
+    capabilities: [
+      'agent_monitoring', 'escalation_handling', 'system_reliability',
+      'conflict_resolution', 'priority_management', 'resource_allocation',
+    ],
+    specializations: ['management', 'coordination', 'escalation'],
     riskLevel: 'low',
     canAutoExecute: true,
     requiresApproval: [],
     cooldownMs: 1000,
     maxConcurrentTasks: 20,
-    icon: 'Monitor',
-    color: 'from-yellow-500 to-orange-500',
-    version: '2.0',
-    intelligenceLevel: 8,
-    learningEnabled: true,
-  },
-  debugging: {
-    id: 'debugging',
-    name: 'Debugging Agent',
-    description: 'Intelligent error analysis, root cause identification, automated debugging, and fix suggestion with context-aware reasoning.',
-    capabilities: [
-      'error_analysis', 'root_cause_identification', 'log_analysis',
-      'stack_trace_analysis', 'performance_debugging', 'memory_leak_detection',
-      'automated_fix_suggestion', 'regression_testing', 'test_generation',
-      'code_review', 'dependency_conflict_resolution',
-    ],
-    specializations: ['javascript', 'typescript', 'python', 'php', 'nodejs', 'database_errors', 'network_errors'],
-    riskLevel: 'low',
-    canAutoExecute: true,
-    requiresApproval: ['apply_fix', 'code_change'],
-    cooldownMs: 3000,
-    maxConcurrentTasks: 8,
-    icon: 'AlertTriangle',
-    color: 'from-amber-500 to-yellow-500',
-    version: '2.0',
-    intelligenceLevel: 9,
-    learningEnabled: true,
-  },
-  infrastructure: {
-    id: 'infrastructure',
-    name: 'Infrastructure Agent',
-    description: 'Docker/K8s orchestration, server provisioning, cluster management, and infrastructure-as-code generation.',
-    capabilities: [
-      'docker_management', 'kubernetes_orchestration', 'server_provisioning',
-      'cluster_management', 'network_configuration', 'iac_generation',
-      'container_scaling', 'resource_optimization', 'volume_management',
-      'load_balancing', 'cdn_configuration', 'environment_replication',
-    ],
-    specializations: ['docker', 'kubernetes', 'aws', 'nginx', 'networking', 'storage'],
-    riskLevel: 'high',
-    canAutoExecute: true,
-    requiresApproval: ['server_restart', 'container_recreate', 'network_change'],
-    cooldownMs: 5000,
-    maxConcurrentTasks: 5,
-    icon: 'Server',
-    color: 'from-gray-500 to-gray-700',
-    version: '2.0',
-    intelligenceLevel: 9,
-    learningEnabled: true,
-  },
-  database: {
-    id: 'database',
-    name: 'Database Agent',
-    description: 'Intelligent database creation, migration, backup, query optimization, and performance tuning across all database types.',
-    capabilities: [
-      'database_creation', 'schema_migration', 'backup_management',
-      'query_optimization', 'index_management', 'replication_setup',
-      'connection_pooling', 'data_integrity_check', 'performance_tuning',
-      'migration_planning', ' disaster_recovery', 'multi_db_support',
-    ],
-    specializations: ['mysql', 'postgresql', 'sqlite', 'mongodb', 'redis'],
-    riskLevel: 'high',
-    canAutoExecute: true,
-    requiresApproval: ['drop_database', 'schema_migration', 'data_deletion'],
-    cooldownMs: 5000,
-    maxConcurrentTasks: 3,
-    icon: 'Database',
-    color: 'from-cyan-500 to-blue-500',
-    version: '2.0',
-    intelligenceLevel: 9,
-    learningEnabled: true,
-  },
-  optimization: {
-    id: 'optimization',
-    name: 'Optimization Agent',
-    description: 'Performance profiling, resource right-sizing, cost optimization, and intelligent auto-scaling with predictive analysis.',
-    capabilities: [
-      'performance_profiling', 'resource_rightsizing', 'cost_optimization',
-      'auto_scaling_recommendations', 'caching_optimization', 'cdn_optimization',
-      'code_splitting', 'image_optimization', 'bundle_analysis',
-      'database_query_optimization', 'load_time_optimization', 'green_computing',
-    ],
-    specializations: ['frontend_performance', 'backend_performance', 'database_optimization', 'cost_optimization'],
-    riskLevel: 'medium',
-    canAutoExecute: true,
-    requiresApproval: ['apply_optimization', 'scale_resources'],
-    cooldownMs: 10000,
-    maxConcurrentTasks: 5,
-    icon: 'TrendingUp',
-    color: 'from-pink-500 to-rose-500',
-    version: '2.0',
-    intelligenceLevel: 8,
-    learningEnabled: true,
-  },
-  recovery: {
-    id: 'recovery',
-    name: 'Recovery Agent',
-    description: 'Automated backup management, point-in-time recovery, disaster recovery orchestration, and data integrity verification.',
-    capabilities: [
-      'automated_backup', 'point_in_time_recovery', 'disaster_recovery',
-      'data_integrity_verification', 'backup_scheduling', 'restore_testing',
-      'cross_region_replication', 'incremental_backup', 'snapshot_management',
-      'recovery_orchestration', 'backup_compliance',
-    ],
-    specializations: ['full_backup', 'incremental_backup', 'snapshot', 'disaster_recovery'],
-    riskLevel: 'high',
-    canAutoExecute: true,
-    requiresApproval: ['restore_database', 'delete_backup'],
-    cooldownMs: 10000,
-    maxConcurrentTasks: 3,
-    icon: 'RotateCcw',
-    color: 'from-teal-500 to-cyan-500',
-    version: '2.0',
-    intelligenceLevel: 9,
-    learningEnabled: true,
-  },
-  scaling: {
-    id: 'scaling',
-    name: 'Scaling Agent',
-    description: 'Auto-scaling management, load distribution, capacity planning, and intelligent resource provisioning based on demand patterns.',
-    capabilities: [
-      'horizontal_scaling', 'vertical_scaling', 'auto_scaling_configuration',
-      'load_distribution', 'capacity_planning', 'demand_prediction',
-      'resource_provisioning', 'cluster_expansion', 'traffic_management',
-      'cost_efficient_scaling', 'multi_region_scaling',
-    ],
-    specializations: ['horizontal_scaling', 'vertical_scaling', 'auto_scaling', 'multi_region'],
-    riskLevel: 'medium',
-    canAutoExecute: true,
-    requiresApproval: ['scale_up', 'scale_down', 'region_expansion'],
-    cooldownMs: 15000,
-    maxConcurrentTasks: 3,
-    icon: 'Zap',
-    color: 'from-yellow-400 to-amber-500',
-    version: '2.0',
-    intelligenceLevel: 8,
-    learningEnabled: true,
-  },
-  dns_domain: {
-    id: 'dns_domain',
-    name: 'DNS Agent',
-    description: 'Automatic DNS configuration, zone management, record optimization, and propagation verification across all domains.',
-    capabilities: [
-      'dns_zone_management', 'record_management', 'propagation_verification',
-      'dns_optimization', 'domain_registration', 'nameserver_configuration',
-      'dns_security', 'dns_monitoring', 'record_migration',
-      'bulk_dns_operations', 'dns_troubleshooting',
-    ],
-    specializations: ['a_record', 'cname', 'mx_record', 'txt_record', 'srv_record', 'ns_record'],
-    riskLevel: 'medium',
-    canAutoExecute: true,
-    requiresApproval: ['delete_zone', 'change_nameservers'],
-    cooldownMs: 5000,
-    maxConcurrentTasks: 10,
-    icon: 'Globe',
-    color: 'from-sky-500 to-blue-500',
-    version: '2.0',
-    intelligenceLevel: 8,
-    learningEnabled: true,
-  },
-  payment: {
-    id: 'payment',
-    name: 'Payment Agent',
-    description: 'Payment processing, bKash integration, transaction verification, invoicing, and financial reporting.',
-    capabilities: [
-      'payment_processing', 'transaction_verification', 'invoice_generation',
-      'refund_management', 'financial_reporting', 'fraud_detection',
-      'subscription_management', 'payment_reminder', 'revenue_analytics',
-    ],
-    specializations: ['bkash', 'nagad', 'rocket', 'card_payment', 'bank_transfer'],
-    riskLevel: 'high',
-    canAutoExecute: true,
-    requiresApproval: ['refund', 'cancel_subscription', 'waive_fee'],
-    cooldownMs: 5000,
-    maxConcurrentTasks: 5,
-    icon: 'CreditCard',
-    color: 'from-green-500 to-emerald-500',
-    version: '2.0',
-    intelligenceLevel: 8,
-    learningEnabled: true,
-  },
-  supervisor: {
-    id: 'supervisor',
-    name: 'Orchestrator Agent',
-    description: 'Master coordination engine that delegates tasks to specialized agents, manages workflows, and ensures optimal resource allocation.',
-    capabilities: [
-      'task_delegation', 'workflow_orchestration', 'agent_coordination',
-      'conflict_resolution', 'priority_management', 'resource_allocation',
-      'progress_tracking', 'decision_making', 'escalation_handling',
-      'quality_assurance', 'performance_optimization', 'agent_training',
-    ],
-    specializations: ['orchestration', 'coordination', 'planning', 'decision_making'],
-    riskLevel: 'low',
-    canAutoExecute: true,
-    requiresApproval: ['emergency_shutdown', 'agent_override'],
-    cooldownMs: 1000,
-    maxConcurrentTasks: 50,
-    icon: 'Cpu',
-    color: 'from-purple-500 to-indigo-500',
-    version: '2.0',
+    icon: 'Eye',
+    color: 'from-indigo-500 to-purple-500',
+    version: '3.0',
     intelligenceLevel: 10,
     learningEnabled: true,
+    isAiPowered: true,
+    aiModel: 'z-ai-chat',
   },
+  
   auto_learning: {
     id: 'auto_learning',
-    name: 'Auto Learning Agent',
-    description: 'Continuously trains and improves all FahadCloud AI agents using project data, user interactions, system metrics, and cross-domain insights. Unlimited, scalable, autonomous learning engine.',
+    name: 'Auto-Learning Agent',
+    description: 'AI-powered continuous learning engine with real knowledge graph building, pattern recognition, and web research.',
     capabilities: [
-      'continuous_training', 'cross_agent_learning', 'pattern_recognition',
-      'auto_optimization', 'knowledge_graph_construction', 'predictive_modeling',
-      'data_aggregation', 'insight_extraction', 'model_fine_tuning',
-      'feedback_loop_integration', 'adaptive_behavior', 'skill_transfer',
-      'performance_tracking', 'self_improvement', 'knowledge_synthesis',
+      'web_research', 'pattern_recognition', 'knowledge_graph_building',
+      'insight_generation', 'model_improvement', 'documentation_analysis',
+      'cross_domain_learning', 'adaptive_behavior',
     ],
-    specializations: ['machine_learning', 'deep_learning', 'reinforcement_learning', 'nlp', 'knowledge_graphs', 'transfer_learning'],
+    specializations: ['ml', 'nlp', 'knowledge_management', 'research'],
     riskLevel: 'low',
     canAutoExecute: true,
-    requiresApproval: ['reset_models', 'delete_training_data'],
-    cooldownMs: 500,
-    maxConcurrentTasks: 100,
+    requiresApproval: [],
+    cooldownMs: 5000,
+    maxConcurrentTasks: 5,
     icon: 'GraduationCap',
-    color: 'from-violet-600 to-fuchsia-500',
-    version: '1.0',
+    color: 'from-violet-500 to-purple-500',
+    version: '3.0',
     intelligenceLevel: 10,
     learningEnabled: true,
+    isAiPowered: true,
+    aiModel: 'z-ai-chat',
+  },
+
+  // ============ NEW AGENTS v3.0 ============
+
+  coding: {
+    id: 'coding',
+    name: 'Coding Agent',
+    description: 'AI-powered code generation, refactoring, and review. Can write, analyze, and improve code across multiple languages.',
+    capabilities: [
+      'code_generation', 'code_review', 'refactoring', 'bug_fixing',
+      'test_generation', 'documentation_generation', 'code_optimization',
+      'api_development', 'database_schema_design', 'algorithm_design',
+      'pattern_implementation', 'code_migration',
+    ],
+    specializations: ['typescript', 'javascript', 'python', 'rust', 'go', 'sql', 'html', 'css', 'react', 'nextjs', 'nodejs'],
+    riskLevel: 'medium',
+    canAutoExecute: true,
+    requiresApproval: ['production_code_change', 'database_migration', 'api_modification'],
+    cooldownMs: 3000,
+    maxConcurrentTasks: 5,
+    icon: 'Code',
+    color: 'from-blue-500 to-cyan-500',
+    version: '3.0',
+    intelligenceLevel: 10,
+    learningEnabled: true,
+    isAiPowered: true,
+    aiModel: 'z-ai-chat',
+  },
+  
+  ui_design: {
+    id: 'ui_design',
+    name: 'UI Agent',
+    description: 'AI-powered UI/UX design with component generation, accessibility analysis, and responsive layout creation.',
+    capabilities: [
+      'component_generation', 'layout_design', 'responsive_design',
+      'accessibility_analysis', 'color_scheme_generation', 'typography_optimization',
+      'animation_design', 'design_system_management', 'css_generation',
+      'ux_review', 'wireframe_generation',
+    ],
+    specializations: ['react', 'tailwind', 'css', 'html', 'accessibility', 'design-systems'],
+    riskLevel: 'low',
+    canAutoExecute: true,
+    requiresApproval: [],
+    cooldownMs: 2000,
+    maxConcurrentTasks: 5,
+    icon: 'Palette',
+    color: 'from-pink-500 to-rose-500',
+    version: '3.0',
+    intelligenceLevel: 9,
+    learningEnabled: true,
+    isAiPowered: true,
+    aiModel: 'z-ai-chat',
+  },
+  
+  research: {
+    id: 'research',
+    name: 'Research Agent',
+    description: 'AI-powered web research with real-time information gathering, document analysis, and knowledge synthesis.',
+    capabilities: [
+      'web_search', 'document_analysis', 'knowledge_synthesis',
+      'trend_analysis', 'competitive_analysis', 'technology_evaluation',
+      'best_practice_discovery', 'documentation_research', 'api_documentation',
+    ],
+    specializations: ['web_search', 'academic_research', 'technology', 'market_analysis'],
+    riskLevel: 'low',
+    canAutoExecute: true,
+    requiresApproval: [],
+    cooldownMs: 2000,
+    maxConcurrentTasks: 8,
+    icon: 'BookOpen',
+    color: 'from-teal-500 to-cyan-500',
+    version: '3.0',
+    intelligenceLevel: 9,
+    learningEnabled: true,
+    isAiPowered: true,
+    aiModel: 'z-ai-chat',
+  },
+  
+  self_improvement: {
+    id: 'self_improvement',
+    name: 'Self-Improvement Agent',
+    description: 'AI agent that continuously analyzes and improves the FahadCloud system itself - optimizing agents, fixing issues, and upgrading capabilities.',
+    capabilities: [
+      'self_analysis', 'agent_optimization', 'performance_improvement',
+      'capability_expansion', 'error_pattern_learning', 'efficiency_boosting',
+      'codebase_analysis', 'architecture_improvement', 'best_practice_adoption',
+      'automated_refactoring', 'dependency_updates', 'security_hardening',
+    ],
+    specializations: ['meta_learning', 'system_optimization', 'continuous_improvement'],
+    riskLevel: 'medium',
+    canAutoExecute: true,
+    requiresApproval: ['agent_modification', 'architecture_change', 'breaking_update'],
+    cooldownMs: 10000,
+    maxConcurrentTasks: 3,
+    icon: 'Cog',
+    color: 'from-fuchsia-500 to-purple-500',
+    version: '3.0',
+    intelligenceLevel: 10,
+    learningEnabled: true,
+    isAiPowered: true,
+    aiModel: 'z-ai-chat',
+  },
+  
+  bug_detector: {
+    id: 'bug_detector',
+    name: 'Bug Detector Agent',
+    description: 'AI-powered continuous bug scanning that detects broken APIs, missing imports, dead code, memory leaks, and security vulnerabilities.',
+    capabilities: [
+      'broken_api_detection', 'missing_import_detection', 'dead_code_analysis',
+      'memory_leak_detection', 'security_vulnerability_scanning', 'error_pattern_analysis',
+      'log_analysis', 'performance_regression_detection', 'dependency_conflict_detection',
+      'configuration_error_detection', 'type_error_detection', 'runtime_error_prediction',
+    ],
+    specializations: ['static_analysis', 'dynamic_analysis', 'security_auditing', 'performance_profiling'],
+    riskLevel: 'low',
+    canAutoExecute: true,
+    requiresApproval: [],
+    cooldownMs: 5000,
+    maxConcurrentTasks: 5,
+    icon: 'Search',
+    color: 'from-red-400 to-orange-500',
+    version: '3.0',
+    intelligenceLevel: 9,
+    learningEnabled: true,
+    isAiPowered: true,
+    aiModel: 'z-ai-chat',
+  },
+  
+  bug_fixer: {
+    id: 'bug_fixer',
+    name: 'Auto Fix Agent',
+    description: 'AI-powered automatic bug fixing with patch generation, test running, and safe rollback capabilities.',
+    capabilities: [
+      'patch_generation', 'test_running', 'safe_rollback', 'fix_verification',
+      'incremental_fixing', 'dependency_fixing', 'configuration_fixing',
+      'security_patch_application', 'performance_fix', 'compatibility_fix',
+    ],
+    specializations: ['automated_fixing', 'testing', 'rollback', 'safe_deployment'],
+    riskLevel: 'high',
+    canAutoExecute: true,
+    requiresApproval: ['production_fix', 'database_fix', 'breaking_change_fix'],
+    cooldownMs: 10000,
+    maxConcurrentTasks: 3,
+    icon: 'Wrench',
+    color: 'from-green-500 to-emerald-500',
+    version: '3.0',
+    intelligenceLevel: 9,
+    learningEnabled: true,
+    isAiPowered: true,
+    aiModel: 'z-ai-chat',
+  },
+  
+  devops_advanced: {
+    id: 'devops_advanced',
+    name: 'Advanced DevOps Agent',
+    description: 'Advanced infrastructure, multi-cloud, GitOps',
+    capabilities: ['multi_cloud', 'gitops', 'infrastructure_as_code', 'monitoring'],
+    specializations: ['aws', 'gcp', 'azure', 'terraform'],
+    riskLevel: 'medium',
+    canAutoExecute: true,
+    requiresApproval: ['destroy', 'delete', 'remove'],
+    cooldownMs: 5000,
+    maxConcurrentTasks: 3,
+    icon: '🚀',
+    color: 'from-blue-500 to-indigo-500',
+    version: '2.0.0',
+    intelligenceLevel: 0.8,
+    learningEnabled: true,
+    isAiPowered: true,
+    aiModel: 'default',
+  },
+
+  chat: {
+    id: 'chat',
+    name: 'Chat Agent',
+    description: 'AI-powered conversational interface with natural language understanding, context awareness, and intelligent routing.',
+    capabilities: [
+      'natural_language_understanding', 'conversation_management', 'context_awareness',
+      'intent_routing', 'multi_turn_dialogue', 'explanation_generation',
+      'task_delegation', 'clarification_requesting', 'feedback_handling',
+    ],
+    specializations: ['conversation', 'routing', 'explanation', 'assistance'],
+    riskLevel: 'low',
+    canAutoExecute: true,
+    requiresApproval: [],
+    cooldownMs: 500,
+    maxConcurrentTasks: 20,
+    icon: 'MessageSquare',
+    color: 'from-emerald-500 to-teal-500',
+    version: '3.0',
+    intelligenceLevel: 9,
+    learningEnabled: true,
+    isAiPowered: true,
+    aiModel: 'z-ai-chat',
   },
 };
 
 // ============ HELPER FUNCTIONS ============
 
 export function getAgentForIntent(intent: string): AgentId {
-  const intentMap: Record<string, AgentId> = {
-    domain_check: 'dns_domain', domain_register: 'dns_domain', domain_manage: 'dns_domain',
-    hosting_deploy: 'deployment', hosting_manage: 'infrastructure', hosting_configure: 'devops',
-    ssl_install: 'security', ssl_manage: 'security',
-    dns_configure: 'dns_domain', dns_manage: 'dns_domain',
-    database_create: 'database', database_manage: 'database',
-    storage_upload: 'infrastructure', storage_manage: 'infrastructure',
-    shell_execute: 'debugging',
-    monitoring_check: 'monitoring', monitoring_setup: 'monitoring',
-    payment_check: 'payment', payment_verify: 'payment',
+  const intentAgentMap: Record<string, AgentId> = {
+    domain_check: 'dns_domain',
+    domain_register: 'dns_domain',
+    domain_manage: 'dns_domain',
+    hosting_deploy: 'deployment',
+    hosting_manage: 'devops',
+    hosting_configure: 'devops',
+    ssl_install: 'security',
+    ssl_manage: 'security',
+    dns_configure: 'dns_domain',
+    dns_manage: 'dns_domain',
+    database_create: 'database',
+    database_manage: 'database',
+    storage_upload: 'infrastructure',
+    shell_execute: 'devops',
+    monitoring_check: 'monitoring',
+    monitoring_setup: 'monitoring',
+    payment_check: 'payment',
     optimization: 'optimization',
     troubleshoot: 'debugging',
-    general_help: 'supervisor',
-    greeting: 'supervisor',
-    unknown: 'supervisor',
+    code_review: 'coding',
+    security_scan: 'security',
+    bug_detect: 'bug_detector',
+    bug_fix: 'bug_fixer',
+    learn_topic: 'auto_learning',
+    agent_status: 'supervisor',
+    self_improve: 'self_improvement',
+    general_help: 'chat',
+    greeting: 'chat',
   };
-  return intentMap[intent] || 'supervisor';
+  return intentAgentMap[intent] || 'chat';
 }
 
 export function getAgentsForComplexTask(intent: string): AgentId[] {
   const complexTaskMap: Record<string, AgentId[]> = {
-    domain_register: ['dns_domain', 'security', 'payment'],
-    hosting_deploy: ['deployment', 'devops', 'infrastructure', 'security', 'monitoring'],
-    ssl_install: ['security', 'infrastructure', 'dns_domain'],
-    database_create: ['database', 'recovery', 'monitoring'],
-    troubleshoot: ['debugging', 'monitoring', 'security'],
-    optimization: ['optimization', 'monitoring', 'infrastructure'],
+    hosting_deploy: ['deployment', 'devops', 'dns_domain', 'security', 'monitoring'],
+    security_scan: ['security', 'bug_detector', 'monitoring', 'supervisor'],
+    bug_fix: ['bug_detector', 'bug_fixer', 'coding', 'debugging'],
+    optimization: ['optimization', 'monitoring', 'coding', 'infrastructure'],
+    self_improve: ['self_improvement', 'auto_learning', 'research', 'coding'],
+    troubleshoot: ['debugging', 'bug_detector', 'monitoring', 'infrastructure'],
   };
   return complexTaskMap[intent] || [getAgentForIntent(intent)];
 }
 
 export function generateId(prefix: string): string {
-  return `${prefix}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+  return `${prefix}_${Date.now().toString(36)}_${Math.random().toString(36).substring(2, 8)}`;
 }
 
-// ============ COMPLEX TYPES ============
+// ============ KEEP EXISTING TYPES (compatibility) ============
+
+export interface AgentMessage {
+  id: string;
+  agentId: AgentId;
+  type: 'request' | 'response' | 'notification' | 'error';
+  content: string;
+  timestamp: Date;
+  metadata?: Record<string, any>;
+}
+
+export interface AgentTaskRequest {
+  id: string;
+  agentId: AgentId;
+  task: string;
+  priority: 'low' | 'medium' | 'high' | 'critical';
+  input: Record<string, any>;
+  dependencies?: string[];
+  createdAt: Date;
+}
+
+export interface AgentTaskResult {
+  taskId: string;
+  agentId: AgentId;
+  success: boolean;
+  output: any;
+  error?: string;
+  duration: number;
+  timestamp: Date;
+}
+
+export interface OrchestrationPlan {
+  id: string;
+  sessionId: string;
+  userId: string;
+  originalRequest: string;
+  steps: OrchestrationStep[];
+  status: 'planning' | 'executing' | 'completed' | 'failed';
+  createdAt: Date;
+}
+
+export interface OrchestrationStep {
+  step: number;
+  agentId: AgentId;
+  action: string;
+  description: string;
+  input: Record<string, any>;
+  riskLevel: 'low' | 'medium' | 'high' | 'critical';
+  requiresApproval: boolean;
+  status: 'pending' | 'running' | 'completed' | 'failed' | 'skipped';
+  result?: any;
+  error?: string;
+  startedAt?: Date;
+  completedAt?: Date;
+}
+
+export interface AgentCollaborationContext {
+  sessionId: string;
+  userId: string;
+  originalRequest: string;
+  classifiedIntent: string;
+  activeAgents: AgentId[];
+  sharedMemory: Record<string, any>;
+  decisions: AgentDecision[];
+  timeline: AgentTimelineEntry[];
+}
+
+export interface AgentDecision {
+  id: string;
+  agentId: AgentId;
+  decision: string;
+  reasoning: string;
+  confidence: number;
+  timestamp: Date;
+  impact?: string;
+}
+
+export interface AgentTimelineEntry {
+  timestamp: Date;
+  agentId: AgentId;
+  event: string;
+  details?: string;
+}
+
+export interface ThoughtStep {
+  step: number;
+  type: 'analyze' | 'plan' | 'reason' | 'decide' | 'validate';
+  content: string;
+  confidence?: number;
+}
+
+export interface ReasoningChain {
+  id: string;
+  steps: ThoughtStep[];
+  conclusion: string;
+  confidence: number;
+}
 
 export interface LearningRecord {
   id: string;
@@ -401,118 +737,14 @@ export interface Prediction {
   createdAt: Date;
 }
 
-export interface AgentMessage {
-  id: string;
-  fromAgent: AgentId;
-  toAgent: AgentId | 'all';
-  type: 'task' | 'result' | 'query' | 'alert' | 'command';
-  content: string;
-  payload?: Record<string, any>;
-  timestamp: Date;
-}
-
-export interface AgentTaskRequest {
-  id: string;
-  agentId: AgentId;
-  sessionId: string;
-  userId: string;
-  type: string;
-  description: string;
-  input: Record<string, any>;
-  riskLevel: 'low' | 'medium' | 'high' | 'critical';
-  requiresApproval: boolean;
-  createdAt: Date;
-}
-
-export interface AgentTaskResult {
-  taskId: string;
-  agentId: AgentId;
-  success: boolean;
-  output: any;
-  error?: string;
-  duration: number;
-  timestamp: Date;
-}
-
-export interface OrchestrationStep {
-  id: string;
-  order: number;
-  agentId: AgentId;
-  action: string;
-  description: string;
-  input: Record<string, any>;
-  status: 'pending' | 'running' | 'completed' | 'failed' | 'skipped';
-  riskLevel: 'low' | 'medium' | 'high' | 'critical';
-  requiresApproval: boolean;
-  result?: AgentTaskResult;
-}
-
-export interface OrchestrationPlan {
-  id: string;
-  sessionId: string;
-  userId: string;
-  intent: string;
-  steps: OrchestrationStep[];
-  riskLevel: 'low' | 'medium' | 'high' | 'critical';
-  approvalRequired: boolean;
-  status: 'planning' | 'pending_approval' | 'executing' | 'completed' | 'failed';
-  createdAt: Date;
-}
-
-export interface AgentCollaborationContext {
-  sessionId: string;
-  userId: string;
-  originalRequest: string;
-  classifiedIntent: string;
-  activeAgents: AgentId[];
-  sharedMemory: Record<string, any>;
-  decisions: AgentDecision[];
-  timeline: AgentTimelineEntry[];
-}
-
-export interface AgentDecision {
-  id: string;
-  agentId: AgentId;
-  type: string;
-  decision: string;
-  reasoning: string;
-  confidence: number;
-  timestamp: Date;
-}
-
-export interface AgentTimelineEntry {
-  id: string;
-  agentId: AgentId;
-  event: string;
-  details: Record<string, any>;
-  timestamp: Date;
-}
-
-export interface ThoughtStep {
-  step: number;
-  type: 'observation' | 'analysis' | 'planning' | 'execution' | 'reflection';
-  content: string;
-  confidence: number;
-  agentId?: AgentId;
-}
-
-export interface ReasoningChain {
-  id: string;
-  sessionId: string;
-  thoughts: ThoughtStep[];
-  conclusion: string;
-  confidence: number;
-  createdAt: Date;
-}
-
 export interface SecurityEvent {
   id: string;
   type: string;
-  severity: 'info' | 'warning' | 'critical';
+  severity: 'low' | 'medium' | 'high' | 'critical';
   source: string;
   description: string;
   timestamp: Date;
-  handled: boolean;
+  resolved: boolean;
 }
 
 export interface SecurityPolicy {
@@ -525,54 +757,42 @@ export interface SecurityPolicy {
 
 export interface SecurityRule {
   id: string;
-  type: 'allow' | 'deny' | 'rate_limit';
+  type: 'deny' | 'allow' | 'rate_limit' | 'require_approval';
   pattern: string;
   resource: string;
   action: string;
-  ttl?: number;
+  threshold?: number;
+  window?: number;
 }
 
-export interface ContainerSpec {
-  name: string;
-  image: string;
-  ports: number[];
-  env: Record<string, string>;
-  volumes: Record<string, string>;
-}
-
-export interface ClusterNode {
-  id: string;
-  name: string;
-  status: 'online' | 'offline' | 'maintenance';
-  cpu: number;
-  memory: number;
-  containers: number;
-}
-
-
-// Additional types needed by agent modules
-export interface AuditLog {
-  id: string;
-  action: string;
-  userId: string;
-  details: any;
-  timestamp: Date;
-}
-
-export type MemoryType = 'short_term' | 'long_term' | 'episodic' | 'semantic';
+export type MemoryType = 
+  | 'short_term' | 'long_term' | 'semantic' | 'workflow' 
+  | 'infrastructure' | 'deployment' | 'security' | 'performance'
+  | 'error_solution' | 'user_preference' | 'project_context' 
+  | 'agent_learning' | 'optimization_history';
 
 export interface MemoryEntry {
   id: string;
   type: MemoryType;
-  content: string;
-  metadata: any;
-  timestamp: Date;
+  category: string;
+  key: string;
+  value: any;
   relevance: number;
+  accessCount: number;
+  createdAt: Date;
+  lastAccessed: Date;
+  expiresAt?: Date;
+  tags: string[];
+  source: AgentId;
+  connections: string[];
 }
 
 export interface MemoryQuery {
-  type?: MemoryType;
-  limit?: number;
+  types?: MemoryType[];
+  category?: string;
+  key?: string;
+  textQuery?: string;
   minRelevance?: number;
-  search?: string;
+  timeRange?: { from: Date; to: Date };
+  limit?: number;
 }

@@ -241,16 +241,16 @@ export default function LandingPage({
       {/* Pricing Section */}
       <section id="pricing" className="py-16 px-4 bg-slate-50">
         <div className="max-w-5xl mx-auto">
-          <h2 className="text-2xl font-bold text-center mb-2">Simple, Transparent Pricing</h2>
-          <p className="text-slate-500 text-center mb-10 text-sm">Start free, scale as you grow</p>
+          <h2 className="text-2xl font-bold text-center mb-2">100% FREE - No Credit Card Needed</h2>
+          <p className="text-slate-500 text-center mb-10 text-sm">All features unlocked for everyone. No limits, no payments, forever free.</p>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
             {[
-              { name: 'Starter', price: 'Free', features: ['1 Free Domain (.fahadcloud.com)', '1GB Storage', 'AI Chat Support', 'Basic Monitoring', 'Shared Hosting'], popular: false },
-              { name: 'Pro', price: 'BDT 499/mo', features: ['5 Domains', '50GB Storage', 'AI Agent Full Access', 'Advanced Monitoring', 'Free SSL on All Domains', 'Priority Support'], popular: true },
-              { name: 'Enterprise', price: 'BDT 1,999/mo', features: ['Unlimited Domains', '500GB Storage', 'AI Agent + Terminal', 'Docker Support', 'Custom SSL', 'Dedicated Resources', '24/7 Support'], popular: false },
+              { name: 'Starter', price: 'FREE', features: ['Unlimited Free Domains', '100GB Storage', '14 AI Agents Full Access', 'Real-time Monitoring', 'Free SSL + DNS', '24/7 Support'], popular: false },
+              { name: 'Pro', price: 'FREE', features: ['Unlimited Domains', '100GB Storage', '14 AI Agents Full Access', 'AI Terminal Access', 'Free SSL + DNS', 'Priority Support', 'One-Click Deploy'], popular: true },
+              { name: 'Enterprise', price: 'FREE', features: ['Unlimited Domains', '100GB Storage', '14 AI Agents + Terminal', 'Docker Support', 'Custom DNS Zones', 'Dedicated Resources', '24/7 Support', 'Database Hosting', 'Cloud Storage'], popular: false },
             ].map((plan, i) => (
               <Card key={i} className={cn('bg-white border-slate-200 shadow-sm', plan.popular && 'border-emerald-200 ring-1 ring-emerald-500/20')}>
-                {plan.popular && <div className="bg-gradient-to-r from-emerald-500 to-teal-600 text-center text-sm py-1 font-medium text-white rounded-t-lg">Most Popular</div>}
+                {plan.popular && <div className="bg-gradient-to-r from-emerald-500 to-teal-600 text-center text-sm py-1 font-medium text-white rounded-t-lg">ALL PLANS FREE</div>}
                 <CardHeader className="text-center pb-2">
                   <CardTitle className="text-slate-900 text-lg">{plan.name}</CardTitle>
                   <div className="text-2xl font-bold text-slate-900 mt-1">{plan.price}</div>

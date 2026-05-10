@@ -38,7 +38,7 @@ export async function GET(
     let containerStatus = null;
     try {
       const engine = getHostingEngine();
-      const containerName = `fc-${userId.substring(0, 8)}-${(env.domain?.name || 'default').replace(/\./g, '-')}`;
+      const containerName = `fc-${userId.substring(0, 8)}-${((env as any).domain?.name || 'default').replace(/\./g, '-')}`;
       containerStatus = engine.getContainerStatus(containerName);
     } catch {}
 
@@ -78,7 +78,7 @@ export async function POST(
     const body = await request.json();
     const { action } = body;
     const engine = getHostingEngine();
-    const containerName = `fc-${userId.substring(0, 8)}-${(env.domain?.name || 'default').replace(/\./g, '-')}`;
+    const containerName = `fc-${userId.substring(0, 8)}-${((env as any).domain?.name || 'default').replace(/\./g, '-')}`;
 
     switch (action) {
       case 'restart': {

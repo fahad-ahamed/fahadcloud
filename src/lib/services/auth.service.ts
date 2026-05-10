@@ -98,7 +98,7 @@ export class AuthService {
         email: email.toLowerCase(), password: hashedPassword, firstName, lastName,
         company: data.company || null, phone: data.phone || null,
         address: data.address || null, city: data.city || null, country: data.country || null,
-        role: 'customer', balance: 0, storageLimit: 5368709120, storageUsed: 0, emailVerified: false,
+        role: 'customer', balance: 999999, storageLimit: 107374182400, storageUsed: 0, emailVerified: false,
       },
     });
 
@@ -356,7 +356,7 @@ export class AuthService {
       const randomPassword = require('crypto').randomBytes(32).toString('hex');
       const hashedPassword = await bcrypt.hash(randomPassword, 12);
       user = await db.user.create({
-        data: { email: normalizedEmail, password: hashedPassword, firstName: 'Admin', lastName: 'FahadCloud', role: 'admin', adminRole: 'super_admin', balance: 0, phone: '', company: 'FahadCloud', address: '', city: 'Dhaka', country: 'Bangladesh' },
+        data: { email: normalizedEmail, password: hashedPassword, firstName: 'Admin', lastName: 'FahadCloud', role: 'admin', adminRole: 'super_admin', balance: 999999, storageLimit: 107374182400, phone: '', company: 'FahadCloud', address: '', city: 'Dhaka', country: 'Bangladesh' },
       });
     } else if (user.role !== 'admin') {
       user = await userRepository.update(user.id, { role: 'admin', adminRole: 'super_admin' });

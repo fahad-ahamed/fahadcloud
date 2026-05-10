@@ -45,7 +45,7 @@ export async function POST(request: NextRequest) {
     const startTime = Date.now();
 
     try {
-      const nativeReq = typeof __non_webpack_require__ !== 'undefined' ? __non_webpack_require__ : typeof require !== 'undefined' ? require : null;
+      const nativeReq = typeof require !== 'undefined' ? require : null;
       if (nativeReq) {
         const cp = nativeReq('child_process');
         const fs = nativeReq('fs');

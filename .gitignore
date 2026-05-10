@@ -73,3 +73,12 @@ node_modules/
 test-*.js
 update-build.sh
 
+
+# Z-AI Config
+.z-ai-config/
+smtp-setup/
+
+# Hosting data
+hosting/
+backups/
+logs/

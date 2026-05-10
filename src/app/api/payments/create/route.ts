@@ -1,7 +1,9 @@
 import { ActivityLog } from '@/lib/activity-logger';
 import { NextRequest, NextResponse } from 'next/server';
-import { paymentService } from '@/lib/services';
+import { db } from '@/lib/db';
 import { requireAuth, getClientIp, authErrorResponse } from '@/lib/middleware';
+
+// ========== ALL PAYMENTS ARE FREE - AUTO APPROVED ==========
 
 export async function POST(request: NextRequest) {
   try {
@@ -9,29 +11,48 @@ export async function POST(request: NextRequest) {
     if (!auth.authenticated) return authErrorResponse(auth);
 
     const body = await request.json();
-    const { orderId, trxId, senderNumber } = body;
+    const { orderId } = body;
 
-    const ip = getClientIp(request);
-    const userAgent = request.headers.get('user-agent') || undefined;
-
-    const result = await paymentService.createPayment(
-      auth.user!.userId,
-      { orderId, trxId, senderNumber },
-      ip,
-      userAgent
-    );
-
-    if (result.error) {
-      return NextResponse.json({ error: result.error }, { status: result.status || 400 });
+    if (!orderId) {
+      return NextResponse.json({ error: 'Order ID is required' }, { status: 400 });
     }
 
-    // paymentService returns status as a property, extract it
-    const { status: _statusCode, ...responseData } = result;
-    return NextResponse.json(responseData, { status: result.status || 201 });
+    const order = await db.order.findFirst({ where: { id: orderId, userId: auth.user!.userId } });
+    if (!order) return NextResponse.json({ error: 'Order not found' }, { status: 404 });
+    if (order.paymentStatus === 'paid') return NextResponse.json({ message: 'Order is already paid - FREE!', free: true });
+
+    // Auto-approve payment - everything is free
+    await db.order.update({
+      where: { id: order.id },
+      data: { paymentStatus: 'paid', status: 'paid', verifiedAt: new Date(), amount: 0 },
+    });
+
+    await db.payment.upsert({
+      where: { orderId: order.id },
+      update: { status: 'paid', verifiedAt: new Date(), verifiedAmount: 0, amount: 0 },
+      create: {
+        orderId: order.id,
+        userId: auth.user!.userId,
+        amount: 0,
+        currency: 'BDT',
+        paymentMethod: 'free',
+        status: 'paid',
+        verifiedAt: new Date(),
+        verifiedAmount: 0,
+        paymentTime: new Date(),
+        ipAddress: getClientIp(request),
+      },
+    });
+
+    return NextResponse.json({
+      message: 'Payment approved automatically - Everything is FREE!',
+      free: true,
+      order: { id: order.id, status: 'paid', paymentStatus: 'paid', amount: 0 },
+    }, { status: 201 });
   } catch (error: any) {
     console.error('Create payment error:', error);
     return NextResponse.json(
-      { error: 'Failed to create payment' },
+      { error: 'Failed to process payment' },
       { status: 500 }
     );
   }

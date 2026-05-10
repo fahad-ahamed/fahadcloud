@@ -1,0 +1,7 @@
+{
+  "baseUrl": "http://127.0.0.1:18080/v1",
+  "apiKey": "Z.ai",
+  "model": "default",
+  "maxTokens": 4096,
+  "temperature": 0.7
+}
