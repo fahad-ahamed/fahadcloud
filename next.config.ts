@@ -4,12 +4,16 @@ const nextConfig: NextConfig = {
   output: "standalone",
   reactStrictMode: true,
   compress: true,
+  poweredByHeader: false,
   
   images: {
     remotePatterns: [
       { protocol: "https", hostname: "**" },
     ],
     formats: ["image/avif", "image/webp"],
+    deviceSizes: [640, 750, 828, 1080, 1200, 1920, 2048, 3840],
+    imageSizes: [16, 32, 48, 64, 96, 128, 256, 384],
+    minimumCacheTTL: 60,
   },
   
   // Security Headers (10/10)
@@ -34,24 +38,78 @@ const nextConfig: NextConfig = {
           { key: "Cache-Control", value: "no-store, no-cache, must-revalidate" },
         ],
       },
+      {
+        source: "/_next/static/:path*",
+        headers: [
+          { key: "Cache-Control", value: "public, max-age=31536000, immutable" },
+        ],
+      },
+      {
+        source: "/static/:path*",
+        headers: [
+          { key: "Cache-Control", value: "public, max-age=2592000, stale-while-revalidate=86400" },
+        ],
+      },
     ];
   },
   
   experimental: {
     serverActions: { bodySizeLimit: "50mb" },
-    optimizePackageImports: ["lucide-react", "@radix-ui/react-*"],
+    optimizePackageImports: [
+      "lucide-react",
+      "@radix-ui/react-*",
+      "date-fns",
+      "lodash-es",
+      "class-variance-authority",
+      "clsx",
+      "tailwind-merge",
+    ],
+    turbo: {
+      rules: {
+        "*.svg": {
+          loaders: ["@svgr/webpack"],
+          as: "*.js",
+        },
+      },
+    },
   },
   
-  webpack: (config, { isServer }) => {
+  serverExternalPackages: [
+    "pg-native",
+    "bcrypt",
+    "canvas",
+    "sharp",
+    "nodemailer",
+  ],
+  
+  webpack: (config, { isServer, dev }) => {
     if (isServer) {
       config.externals = config.externals || [];
       if (Array.isArray(config.externals)) {
         config.externals.push("child_process", "os", "fs", "path", "nodemailer", "dotenv");
       }
     }
+    
+    // Production optimizations
+    if (!dev && !isServer) {
+      config.optimization = {
+        ...config.optimization,
+        splitChunks: {
+          ...config.optimization?.splitChunks,
+          cacheGroups: {
+            ...((config.optimization?.splitChunks as any)?.cacheGroups || {}),
+            vendor: {
+              test: /[\\/]node_modules[\\/]/,
+              name: "vendors",
+              chunks: "all" as const,
+            },
+          },
+        },
+      };
+    }
+    
     return config;
   },
 };
 
 export default nextConfig;
-

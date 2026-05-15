@@ -1,7 +1,7 @@
-// System utilities - uses proper ES imports
+// System utilities - uses safe shell execution
 import { validateShellCommand, getSandboxEnv, getSandboxCwd } from '@/lib/shell-sandbox';
+import { safeExec, safeShellExec } from '@/lib/shell-utils';
 import os from 'os';
-import { execSync } from 'child_process';
 import { mkdirSync } from 'fs';
 
 export function getSystemInfo() {
@@ -14,7 +14,7 @@ export function getSystemInfo() {
     
     let disk = 0;
     try {
-      const output = execSync("df -h / | tail -1 | awk '{print $5}' | tr -d '%'", { encoding: 'utf-8' });
+      const output = safeShellExec("df -h / | tail -1 | awk '{print $5}' | tr -d '%'", { timeout: 5000 });
       disk = parseInt(output.trim()) || 0;
     } catch {}
 
@@ -33,26 +33,25 @@ export function getSystemInfo() {
   } catch { return { cpu: 0, ram: 0, disk: 0, uptime: 'unknown', appStatus: 'unknown' as const, cpuCores: 1, ramTotal: 0, ramUsed: 0, loadAverage: ['0','0','0'], issues: [] }; }
 }
 
-export function executeCommand(command: string, userId: string): { output: string; exitCode: number } {
+export function executeCommand(command: string, userId: string, isAdmin: boolean = false): { output: string; exitCode: number } {
   // Validate command against sandbox rules
-  const validation = validateShellCommand(command);
+  const validation = validateShellCommand(command, isAdmin, userId);
   if (!validation.safe) {
     return { output: `Command blocked: ${validation.reason}`, exitCode: 126 };
   }
 
-  const homeDir = getSandboxCwd(userId);
+  const homeDir = getSandboxCwd(userId, isAdmin);
   try { mkdirSync(homeDir, { recursive: true }); } catch {}
   try {
-    const output = execSync(validation.sanitized!, {
+    const output = safeShellExec(validation.sanitized!, {
       timeout: 15000,
       maxBuffer: 512 * 1024,
-      encoding: 'utf-8',
       cwd: homeDir,
-      env: { ...process.env, ...getSandboxEnv(userId) },
+      env: { ...process.env, ...getSandboxEnv(userId, isAdmin) } as NodeJS.ProcessEnv,
     });
     return { output: output || 'OK', exitCode: 0 };
   } catch (error: any) {
-    let output = (error.stdout || '') + (error.stderr ? '\n' + error.stderr : '') || error.message;
-    return { output, exitCode: error.status || 1 };
+    let output = error.message || 'Command failed';
+    return { output, exitCode: 1 };
   }
 }

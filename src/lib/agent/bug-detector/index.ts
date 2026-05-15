@@ -6,6 +6,7 @@ import { db } from '@/lib/db';
 import { AgentId, generateId } from '../types';
 import { aiChat } from '../ai-engine';
 import { appConfig } from '@/lib/config/app.config';
+import { safeExec, safeShellExec } from '@/lib/shell-utils';
 
 
 // Local types (not exported from ai-engine)
@@ -191,26 +192,28 @@ export class BugDetectorEngine {
     const findings: BugDetectionResult[] = [];
 
     try {
-      const { execSync } = require('child_process');
-      
-      // Find all API route files
-      const apiFiles = execSync(
-        `find ${projectPath}/src/app/api -name 'route.ts' -o -name 'route.js' 2>/dev/null`,
-        { encoding: 'utf-8', timeout: 10000 }
-      ).trim().split('\n').filter(Boolean);
+      // Find all API route files using safeExec
+      const output = safeExec('find', [projectPath + '/src/app/api', '-name', 'route.ts', '-o', '-name', 'route.js'], { timeout: 10000 });
+      const apiFiles = output.trim().split('\n').filter(Boolean);
 
       // Check each API route for broken imports
       for (const file of apiFiles.slice(0, 30)) {
         try {
-          const content = execSync(`cat '${file}'`, { encoding: 'utf-8', timeout: 5000 });
+          const content = safeExec('cat', [file], { timeout: 5000 });
           
           // Check for imports from non-existent modules
           const importMatches = content.matchAll(/from\s+['"](@\/[^'"]+)['"]/g);
           for (const match of importMatches) {
             const importPath = match[1].replace('@/', `${projectPath}/src/`);
-            try {
-              execSync(`test -f '${importPath}.ts' || test -f '${importPath}.tsx' || test -f '${importPath}.js' || test -f '${importPath}/index.ts' || test -f '${importPath}/index.tsx'`, { timeout: 2000 });
-            } catch {
+            let found = false;
+            for (const ext of ['.ts', '.tsx', '.js', '/index.ts', '/index.tsx']) {
+              try {
+                safeExec('test', ['-f', importPath + ext], { timeout: 2000 });
+                found = true;
+                break;
+              } catch {}
+            }
+            if (!found) {
               findings.push({
                 type: 'broken_import',
                 severity: 'high',
@@ -244,11 +247,9 @@ export class BugDetectorEngine {
     const findings: BugDetectionResult[] = [];
 
     try {
-      const { execSync } = require('child_process');
-      
       // Check TypeScript compilation for missing imports
       try {
-        execSync(`cd ${projectPath} && npx tsc --noEmit 2>&1 | head -50`, { encoding: 'utf-8', timeout: 30000 });
+        safeExec('npx', ['tsc', '--noEmit'], { timeout: 30000, cwd: projectPath });
       } catch (error: any) {
         const tsErrors = (error.stdout || error.message || '').split('\n')
           .filter((line: string) => line.includes('error TS'))
@@ -277,29 +278,23 @@ export class BugDetectorEngine {
     const findings: BugDetectionResult[] = [];
 
     try {
-      const { execSync } = require('child_process');
-      
       // Find unused exports
       try {
-        const exports = execSync(
-          `cd ${projectPath} && grep -r "export " src/ --include="*.ts" --include="*.tsx" -l 2>/dev/null | head -20`,
-          { encoding: 'utf-8', timeout: 10000 }
-        ).trim().split('\n').filter(Boolean);
+        const output = safeExec('grep', ['-r', 'export ', 'src/', '--include=*.ts', '--include=*.tsx', '-l'], { timeout: 10000, cwd: projectPath });
+        const exports = output.trim().split('\n').filter(Boolean).slice(0, 20);
 
         // Check for exported functions/components that aren't imported elsewhere
         for (const file of exports.slice(0, 10)) {
-          const content = execSync(`cat '${file}'`, { encoding: 'utf-8', timeout: 5000 });
+          const content = safeExec('cat', [file], { timeout: 5000 });
           const exportNames = content.matchAll(/export\s+(?:function|const|class|interface|type)\s+(\w+)/g);
           
           for (const match of exportNames) {
             const name = match[1];
             try {
-              const usageCount = execSync(
-                `cd ${projectPath} && grep -r "${name}" src/ --include="*.ts" --include="*.tsx" -l 2>/dev/null | wc -l`,
-                { encoding: 'utf-8', timeout: 5000 }
-              ).trim();
+              const usageOutput = safeExec('grep', ['-r', name, 'src/', '--include=*.ts', '--include=*.tsx', '-l'], { timeout: 5000, cwd: projectPath });
+              const usageCount = usageOutput.trim().split('\n').filter(Boolean).length;
               
-              if (parseInt(usageCount) <= 1) {
+              if (usageCount <= 1) {
                 findings.push({
                   type: 'dead_code',
                   severity: 'low',
@@ -322,14 +317,10 @@ export class BugDetectorEngine {
     const findings: BugDetectionResult[] = [];
 
     try {
-      const { execSync } = require('child_process');
-      
       // Check for hardcoded secrets
       try {
-        const secrets = execSync(
-          `cd ${projectPath} && grep -rn "password\\|secret\\|api_key\\|apikey\\|token" src/ --include="*.ts" --include="*.tsx" -l 2>/dev/null | grep -v node_modules | head -10`,
-          { encoding: 'utf-8', timeout: 10000 }
-        ).trim().split('\n').filter(Boolean);
+        const output = safeExec('grep', ['-rn', 'password\\|secret\\|api_key\\|apikey\\|token', 'src/', '--include=*.ts', '--include=*.tsx', '-l'], { timeout: 10000, cwd: projectPath });
+        const secrets = output.trim().split('\n').filter(Boolean).slice(0, 10);
 
         for (const file of secrets) {
           findings.push({
@@ -345,7 +336,7 @@ export class BugDetectorEngine {
 
       // npm audit
       try {
-        const audit = execSync(`cd ${projectPath} && npm audit --json 2>/dev/null`, { encoding: 'utf-8', timeout: 30000 });
+        const audit = safeExec('npm', ['audit', '--json'], { timeout: 30000, cwd: projectPath });
         const auditData = JSON.parse(audit);
         if (auditData.vulnerabilities) {
           for (const [pkg, info] of Object.entries(auditData.vulnerabilities)) {
@@ -370,7 +361,6 @@ export class BugDetectorEngine {
     const findings: BugDetectionResult[] = [];
 
     try {
-      const { execSync } = require('child_process');
       
       // Check for common memory leak patterns
       const patterns = [
@@ -380,14 +370,12 @@ export class BugDetectorEngine {
       ];
 
       try {
-        const srcFiles = execSync(
-          `find ${projectPath}/src -name '*.ts' -o -name '*.tsx' 2>/dev/null | head -30`,
-          { encoding: 'utf-8', timeout: 10000 }
-        ).trim().split('\n').filter(Boolean);
+        const output = safeExec('find', [projectPath + '/src', '-name', '*.ts', '-o', '-name', '*.tsx'], { timeout: 10000 });
+        const srcFiles = output.trim().split('\n').filter(Boolean).slice(0, 30);
 
         for (const file of srcFiles) {
           try {
-            const content = execSync(`cat '${file}'`, { encoding: 'utf-8', timeout: 5000 });
+            const content = safeExec('cat', [file], { timeout: 5000 });
             for (const p of patterns) {
               if (new RegExp(p.pattern).test(content) && !new RegExp(p.check).test(content)) {
                 findings.push({
@@ -416,11 +404,9 @@ export class BugDetectorEngine {
     const findings: BugDetectionResult[] = [];
 
     try {
-      const { execSync } = require('child_process');
-      
       // Check .env file exists
       try {
-        execSync(`test -f ${projectPath}/.env`, { timeout: 2000 });
+        safeExec('test', ['-f', projectPath + '/.env'], { timeout: 2000 });
       } catch {
         findings.push({
           type: 'missing_config',
@@ -444,18 +430,14 @@ export class BugDetectorEngine {
 
   private async runAICodeReview(projectPath: string): Promise<CodeReviewResult> {
     try {
-      const { execSync } = require('child_process');
-      
       // Get main source files for AI review
-      const mainFiles = execSync(
-        `find ${projectPath}/src -name '*.ts' -o -name '*.tsx' 2>/dev/null | head -5`,
-        { encoding: 'utf-8', timeout: 10000 }
-      ).trim().split('\n').filter(Boolean);
+      const output = safeExec('find', [projectPath + '/src', '-name', '*.ts', '-o', '-name', '*.tsx'], { timeout: 10000 });
+      const mainFiles = output.trim().split('\n').filter(Boolean).slice(0, 5);
 
       let allCode = '';
       for (const file of mainFiles) {
         try {
-          const content = execSync(`cat '${file}' | head -100`, { encoding: 'utf-8', timeout: 5000 });
+          const content = safeShellExec(`cat '${file.replace(/'/g, "'")}' | head -100`, { timeout: 5000 });
           allCode += `// ${file}\n${content}\n\n`;
         } catch {}
       }
@@ -505,9 +487,8 @@ export class BugDetectorEngine {
     // Get code context for AI fix generation
     let codeContext = '';
     try {
-      const { execSync } = require('child_process');
       const filePath = `${projectPath}${bug.location}`.split(':')[0];
-      codeContext = execSync(`cat '${filePath}' 2>/dev/null || echo ""`, { encoding: 'utf-8', timeout: 5000 });
+      codeContext = safeExec('cat', [filePath], { timeout: 5000 });
     } catch {}
 
     // Use AI to generate fix
@@ -524,11 +505,10 @@ export class BugDetectorEngine {
     // If fix is available and auto-fixable, apply it
     if (fixResult.success && fixResult.patch && bug.autoFixable) {
       try {
-        const { execSync } = require('child_process');
         const filePath = `${projectPath}${bug.location}`.split(':')[0];
         
         // Create backup for rollback
-        execSync(`cp '${filePath}' '${filePath}.bak_${Date.now()}' 2>/dev/null`, { timeout: 5000 });
+        safeExec('cp', [filePath, filePath + '.bak_' + Date.now()], { timeout: 5000 });
         
         // Apply the patch (write the fixed code)
         const fs = require('fs');
@@ -538,14 +518,14 @@ export class BugDetectorEngine {
         let testResult: 'passed' | 'failed' | 'skipped' = 'skipped';
         if (fixResult.testCommand) {
           try {
-            execSync(fixResult.testCommand, { encoding: 'utf-8', timeout: 30000 });
+            safeShellExec(fixResult.testCommand, { timeout: 30000 });
             testResult = 'passed';
           } catch {
             testResult = 'failed';
             // Rollback on test failure
             if (fixResult.rollbackCommand) {
               try {
-                execSync(fixResult.rollbackCommand, { encoding: 'utf-8', timeout: 10000 });
+                safeShellExec(fixResult.rollbackCommand, { timeout: 10000 });
               } catch {}
             }
           }

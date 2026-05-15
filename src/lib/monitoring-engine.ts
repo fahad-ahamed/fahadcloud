@@ -1,9 +1,27 @@
 // Real Monitoring Engine - Collects, stores, and alerts on system metrics
 // Records metrics to database for historical analysis
+// Uses safeExec/safeShellExec for all shell command execution
 
 import { db } from '@/lib/db';
 import os from 'os';
-import { execSync } from 'child_process';
+import { safeExec, safeShellExec } from '@/lib/shell-utils';
+
+// ============ INPUT VALIDATION ============
+
+/**
+ * Validates a host ID — must be alphanumeric with limited special chars.
+ * Used for metric recording where hostId could come from external input.
+ */
+function isValidHostId(hostId: string): boolean {
+  return /^[a-zA-Z0-9_-]{1,128}$/.test(hostId);
+}
+
+/**
+ * Validates a metric type string — must be alphanumeric with underscores.
+ */
+function isValidMetricType(metricType: string): boolean {
+  return /^[a-zA-Z0-9_]{1,64}$/.test(metricType);
+}
 
 export interface SystemMetrics {
   cpu: number;
@@ -47,21 +65,27 @@ export class MonitoringEngine {
 
       let disk = 0;
       try {
-        const output = execSync("df -h / | tail -1 | awk '{print $5}' | tr -d '%'", { encoding: 'utf-8' });
+        // Uses safeShellExec for piped commands; no user input
+        const output = safeShellExec("df -h / | tail -1 | awk '{print $5}' | tr -d '%'", { timeout: 5000 });
         disk = parseInt(output.trim()) || 0;
       } catch {}
 
       let dockerContainers = 0;
       try {
-        const output = execSync('docker ps -q | wc -l', { encoding: 'utf-8', timeout: 5000 });
-        dockerContainers = parseInt(output.trim()) || 0;
+        // Array-based args — no shell interpolation
+        const output = safeExec('docker', ['ps', '-q'], { timeout: 5000 });
+        dockerContainers = output.trim().split('\n').filter(Boolean).length;
       } catch {}
 
       let activeConnections = 0;
       try {
-        const output = execSync('ss -s | grep estab | head -1', { encoding: 'utf-8', timeout: 5000 });
-        const match = output.match(/(\d+)/);
-        activeConnections = match && match[1] ? parseInt(match[1]) : 0;
+        // Array-based args — no shell interpolation
+        const output = safeExec('ss', ['-s'], { timeout: 5000 });
+        const estabLine = output.split('\n').find(l => l.includes('estab'));
+        if (estabLine) {
+          const match = estabLine.match(/(\d+)/);
+          activeConnections = match && match[1] ? parseInt(match[1]) : 0;
+        }
       } catch {}
 
       const uptimeSecs = os.uptime();
@@ -92,16 +116,23 @@ export class MonitoringEngine {
   async recordMetrics(): Promise<void> {
     try {
       const metrics = this.collectMetrics();
-      
+
+      // Validate hostId before DB write
+      const hostId = 'default';
+      if (!isValidHostId(hostId)) {
+        console.error('Invalid hostId for metrics recording');
+        return;
+      }
+
       await db.monitoringMetric.createMany({
         data: [
-          { hostId: 'default', metricType: 'cpu', value: metrics.cpu, unit: 'percent' },
-          { hostId: 'default', metricType: 'ram', value: metrics.ram, unit: 'percent' },
-          { hostId: 'default', metricType: 'ram_used', value: metrics.ramUsed, unit: 'mb' },
-          { hostId: 'default', metricType: 'ram_total', value: metrics.ramTotal, unit: 'mb' },
-          { hostId: 'default', metricType: 'disk', value: metrics.disk, unit: 'percent' },
-          { hostId: 'default', metricType: 'docker_containers', value: metrics.dockerContainers || 0, unit: 'count' },
-          { hostId: 'default', metricType: 'active_connections', value: metrics.activeConnections || 0, unit: 'count' },
+          { hostId, metricType: 'cpu', value: metrics.cpu, unit: 'percent' },
+          { hostId, metricType: 'ram', value: metrics.ram, unit: 'percent' },
+          { hostId, metricType: 'ram_used', value: metrics.ramUsed, unit: 'mb' },
+          { hostId, metricType: 'ram_total', value: metrics.ramTotal, unit: 'mb' },
+          { hostId, metricType: 'disk', value: metrics.disk, unit: 'percent' },
+          { hostId, metricType: 'docker_containers', value: metrics.dockerContainers || 0, unit: 'count' },
+          { hostId, metricType: 'active_connections', value: metrics.activeConnections || 0, unit: 'count' },
         ],
       });
 
@@ -117,8 +148,15 @@ export class MonitoringEngine {
 
   // Get historical metrics
   async getHistoricalMetrics(metricType: string, hours: number = 24): Promise<{ timestamp: string; value: number }[]> {
+    // Validate metricType to prevent any potential injection
+    if (!isValidMetricType(metricType)) {
+      return [];
+    }
+    // Validate hours is a safe number
+    const safeHours = Math.max(1, Math.min(8760, Math.floor(hours))); // Max 1 year
+
     try {
-      const since = new Date(Date.now() - hours * 60 * 60 * 1000);
+      const since = new Date(Date.now() - safeHours * 60 * 60 * 1000);
       const metrics = await db.monitoringMetric.findMany({
         where: { metricType, recordedAt: { gte: since } },
         orderBy: { recordedAt: 'asc' },

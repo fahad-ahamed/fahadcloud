@@ -742,9 +742,12 @@ export interface SecurityEvent {
   type: string;
   severity: 'low' | 'medium' | 'high' | 'critical';
   source: string;
-  description: string;
+  target?: string;
+  details?: any;
+  description?: string;
   timestamp: Date;
   resolved: boolean;
+  autoRemediated?: boolean;
 }
 
 export interface SecurityPolicy {

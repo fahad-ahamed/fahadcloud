@@ -6,6 +6,11 @@ export const appConfig = {
   isProduction: process.env.NODE_ENV === 'production',
   appUrl: process.env.APP_URL || `http://${process.env.SERVER_IP || 'localhost'}:${process.env.PORT || '3000'}`,
 
+  // Security
+  enforceHttps: process.env.ENFORCE_HTTPS === 'true',
+  corsOrigin: process.env.CORS_ORIGIN || '',
+  allowedOrigins: (process.env.ALLOWED_ORIGINS || '').split(',').filter(Boolean),
+
   // JWT
   jwt: {
     secret: process.env.JWT_SECRET || 'fallback-dev-secret-change-in-prod',
@@ -16,6 +21,9 @@ export const appConfig = {
   // Database
   database: {
     url: process.env.DATABASE_URL || 'postgresql://localhost:5432/fahadcloud',
+    poolSize: parseInt(process.env.DB_POOL_SIZE || '5'),
+    connectionTimeout: parseInt(process.env.DB_CONNECTION_TIMEOUT || '10000'),
+    poolTimeout: parseInt(process.env.DB_POOL_TIMEOUT || '10000'),
   },
 
   // SMTP

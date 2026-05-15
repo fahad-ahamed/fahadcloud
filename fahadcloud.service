@@ -5,13 +5,19 @@ After=network.target postgresql.service redis.service
 Wants=postgresql.service redis.service
 
 [Service]
-Type=simple
+Type=notify
+NotifyAccess=all
 User=fahad
 Group=fahad
 WorkingDirectory=/home/fahad/fahadcloud
 EnvironmentFile=/home/fahad/fahadcloud/.env
 ExecStart=/usr/bin/node .next/standalone/server.js
 ExecStop=/bin/kill -SIGTERM $MAINPID
+
+# Node.js Performance Environment Variables
+Environment=NODE_ENV=production
+Environment=UV_THREADPOOL_SIZE=16
+Environment=NODE_OPTIONS=--max-old-space-size=768 --optimize-for-size
 
 # Restart Policy
 Restart=on-failure
@@ -22,8 +28,9 @@ StartLimitBurst=5
 # Process Management
 KillMode=mixed
 KillSignal=SIGTERM
-TimeoutStartSec=30
+TimeoutStartSec=60
 TimeoutStopSec=30
+WatchdogSec=60
 
 # Security Hardening
 NoNewPrivileges=true
@@ -31,17 +38,27 @@ PrivateTmp=true
 ProtectSystem=strict
 ProtectHome=read-only
 ReadWritePaths=/home/fahad/fahadcloud/logs
+ReadWritePaths=/home/fahad/fahadcloud/backups
+ReadWritePaths=/home/fahad/fahadcloud/hosting
+ReadWritePaths=/home/fahad/fahadcloud/tmp
 ReadOnlyPaths=/home/fahad/fahadcloud/.next
+ReadOnlyPaths=/home/fahad/fahadcloud/public
 
 # Resource Limits
 LimitNOFILE=65536
+LimitNPROC=4096
 MemoryMax=1G
+MemoryHigh=896M
 CPUQuota=200%
 
 # Logging
 StandardOutput=journal
 StandardError=journal
 SyslogIdentifier=fahadcloud
+
+# Socket Activation Readiness
+# The app signals readiness when it starts listening on port 3000
+# Type=notify above enables this with sd_notify() if available
 
 [Install]
 WantedBy=multi-user.target

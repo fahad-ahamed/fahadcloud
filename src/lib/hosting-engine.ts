@@ -1,9 +1,48 @@
 // Real Docker-Based Hosting Engine
 // Creates isolated container environments for each user/domain
+// SECURITY: Uses safeExec with array-based args; inputs validated before use
 
-import { execSync } from 'child_process';
-import { existsSync, writeFileSync, mkdirSync as fsMkdirSync } from 'fs';
+import { safeExec, safeShellExec } from '@/lib/shell-utils';
+import { existsSync, writeFileSync, mkdirSync } from 'fs';
 import { appConfig } from '@/lib/config/app.config';
+
+// ============ INPUT VALIDATION ============
+
+/**
+ * Validates a domain name against RFC 1035 — only allows alphanumeric, dots, and hyphens.
+ * Rejects any domain containing shell metacharacters.
+ */
+function isValidDomain(domain: string): boolean {
+  return /^[a-zA-Z0-9]([a-zA-Z0-9-]*[a-zA-Z0-9])?(\.[a-zA-Z0-9]([a-zA-Z0-9-]*[a-zA-Z0-9])?)*\.[a-zA-Z]{2,}$/.test(domain) && domain.length <= 253;
+}
+
+/**
+ * Validates a user ID — must be alphanumeric/crockford-base32 only.
+ */
+function isValidUserId(userId: string): boolean {
+  return /^[a-zA-Z0-9]{1,64}$/.test(userId);
+}
+
+/**
+ * Validates a Docker container name — only allows [a-zA-Z0-9._-]
+ */
+function isValidContainerName(name: string): boolean {
+  return /^[a-zA-Z0-9][a-zA-Z0-9_.-]{0,127}$/.test(name);
+}
+
+/**
+ * Validates a Docker image name — allows [a-zA-Z0-9./:-]
+ */
+function isValidImageName(image: string): boolean {
+  return /^[a-zA-Z0-9][a-zA-Z0-9./:_-]{0,255}$/.test(image);
+}
+
+/**
+ * Validate and sanitize a port number
+ */
+function isValidPort(port: number): boolean {
+  return Number.isInteger(port) && port >= 1 && port <= 65535;
+}
 
 export interface HostingContainer {
   id: string;
@@ -43,7 +82,7 @@ export class HostingEngine {
 
   private checkDocker(): void {
     try {
-      execSync('docker info', { timeout: 5000, encoding: 'utf-8' });
+      safeExec('docker', ['info'], { timeout: 5000 });
       this.dockerAvailable = true;
     } catch {
       this.dockerAvailable = false;
@@ -56,19 +95,37 @@ export class HostingEngine {
 
   // Create a hosting environment for a user/domain
   async createHostingEnv(userId: string, domainName: string, framework: string): Promise<DeployResult> {
+    // Input validation
+    if (!isValidUserId(userId)) {
+      return { success: false, error: 'Invalid user ID format' };
+    }
+    if (!isValidDomain(domainName)) {
+      return { success: false, error: 'Invalid domain name format' };
+    }
     if (!this.dockerAvailable) {
       return { success: false, error: 'Docker is not available on this server' };
     }
 
     const config = FRAMEWORK_IMAGES[framework] || FRAMEWORK_IMAGES.static!;
+    if (!isValidImageName(config.image)) {
+      return { success: false, error: 'Invalid Docker image name' };
+    }
+
     const containerName = `fc-${userId.substring(0, 8)}-${domainName.replace(/\./g, '-')}`;
+    if (!isValidContainerName(containerName)) {
+      return { success: false, error: 'Invalid container name generated' };
+    }
+
     const hostDir = `${appConfig.hosting.usersDir}/${userId}/${domainName}`;
     const port = await this.allocatePort();
+    if (!isValidPort(port)) {
+      return { success: false, error: 'Failed to allocate a valid port' };
+    }
 
     try {
-      // Ensure hosting directory exists with index.html
-      execSync(`mkdir -p ${hostDir}`, { encoding: 'utf-8' });
-      
+      // Ensure hosting directory exists — use mkdirSync instead of shell command
+      mkdirSync(hostDir, { recursive: true });
+
       // Ensure there's an index.html
       const indexPath = `${hostDir}/index.html`;
       if (!existsSync(indexPath)) {
@@ -97,10 +154,10 @@ export class HostingEngine {
 </html>`);
       }
 
-      // Create nginx config for this site
-      const nginxConfDir = `${appConfig.hosting.nginxDir}`;
-      execSync(`mkdir -p ${nginxConfDir}`, { encoding: 'utf-8' });
-      
+      // Create nginx config directory — use mkdirSync
+      const nginxConfDir = appConfig.hosting.nginxDir;
+      mkdirSync(nginxConfDir, { recursive: true });
+
       const nginxConf = `server {
     listen ${config.port};
     server_name ${domainName};
@@ -115,44 +172,47 @@ export class HostingEngine {
 
       // Stop and remove existing container if any
       try {
-        execSync(`docker rm -f ${containerName} 2>/dev/null`, { encoding: 'utf-8', timeout: 10000 });
+        safeExec('docker', ['rm', '-f', containerName], { timeout: 10000 });
       } catch {}
 
       // Create and start container with proper volume mount
-      let dockerCmd: string;
+      // All user-controlled values are validated; passed as separate array args
+      let containerId: string;
       if (framework === 'static' || config.image.includes('nginx')) {
         // For static/nginx, mount the site directory and custom config
-        dockerCmd = `docker run -d \
-          --name ${containerName} \
-          --memory="256m" \
-          --cpus="0.5" \
-          --restart unless-stopped \
-          -v ${hostDir}:/usr/share/nginx/html:ro \
-          -v ${nginxConfDir}/${domainName}.conf:/etc/nginx/conf.d/default.conf:ro \
-          -p ${port}:80 \
-          ${config.image}`;
+        containerId = safeExec('docker', [
+          'run', '-d',
+          '--name', containerName,
+          '--memory=256m',
+          '--cpus=0.5',
+          '--restart', 'unless-stopped',
+          '-v', `${hostDir}:/usr/share/nginx/html:ro`,
+          '-v', `${nginxConfDir}/${domainName}.conf:/etc/nginx/conf.d/default.conf:ro`,
+          '-p', `${port}:80`,
+          config.image,
+        ], { timeout: 60000 }).trim();
       } else {
         // For other frameworks, mount the app directory
-        dockerCmd = `docker run -d \
-          --name ${containerName} \
-          --memory="256m" \
-          --cpus="0.5" \
-          --restart unless-stopped \
-          -v ${hostDir}:/app \
-          -p ${port}:${config.port} \
-          -e NODE_ENV=production \
-          -e PORT=${config.port} \
-          -w /app \
-          ${config.image} \
-          sh -c "${config.startCmd}"`;
+        containerId = safeExec('docker', [
+          'run', '-d',
+          '--name', containerName,
+          '--memory=256m',
+          '--cpus=0.5',
+          '--restart', 'unless-stopped',
+          '-v', `${hostDir}:/app`,
+          '-p', `${port}:${config.port}`,
+          '-e', 'NODE_ENV=production',
+          '-e', `PORT=${config.port}`,
+          '-w', '/app',
+          config.image,
+          'sh', '-c', config.startCmd,
+        ], { timeout: 60000 }).trim();
       }
-
-      const containerId = execSync(dockerCmd, { encoding: 'utf-8', timeout: 60000 }).trim();
 
       return {
         success: true,
         containerId,
-        url: `http://${process.env.SERVER_IP || 'localhost'}:${port}`,
+        url: `http://${appConfig.serverIp}:${port}`,
         buildLog: `Container ${containerName} created with ${config.image} on port ${port}`,
       };
     } catch (error: any) {
@@ -167,11 +227,14 @@ export class HostingEngine {
   // Get hosting container status
   getContainerStatus(containerName: string): HostingContainer | null {
     if (!this.dockerAvailable) return null;
+    if (!isValidContainerName(containerName)) return null;
     try {
-      const output = execSync(
-        `docker inspect --format '{{.ID}}|{{.State.Status}}|{{.Config.Image}}|{{.NetworkSettings.Ports}}' ${containerName} 2>/dev/null`,
-        { encoding: 'utf-8', timeout: 10000 }
-      );
+      const output = safeExec('docker', [
+        'inspect',
+        '--format',
+        '{{.ID}}|{{.State.Status}}|{{.Config.Image}}|{{.NetworkSettings.Ports}}',
+        containerName,
+      ], { timeout: 10000 });
       const [id, status, image, ports] = output.trim().split('|');
       return { id: id!.substring(0, 12), name: containerName, image: image!, status: status!, ports: ports ? [ports] : [], createdAt: '' };
     } catch {
@@ -182,8 +245,9 @@ export class HostingEngine {
   // Stop a container
   async stopContainer(containerName: string): Promise<boolean> {
     if (!this.dockerAvailable) return false;
+    if (!isValidContainerName(containerName)) return false;
     try {
-      execSync(`docker stop ${containerName}`, { encoding: 'utf-8', timeout: 30000 });
+      safeExec('docker', ['stop', containerName], { timeout: 30000 });
       return true;
     } catch { return false; }
   }
@@ -191,8 +255,9 @@ export class HostingEngine {
   // Start a container
   async startContainer(containerName: string): Promise<boolean> {
     if (!this.dockerAvailable) return false;
+    if (!isValidContainerName(containerName)) return false;
     try {
-      execSync(`docker start ${containerName}`, { encoding: 'utf-8', timeout: 30000 });
+      safeExec('docker', ['start', containerName], { timeout: 30000 });
       return true;
     } catch { return false; }
   }
@@ -200,8 +265,9 @@ export class HostingEngine {
   // Remove a container
   async removeContainer(containerName: string): Promise<boolean> {
     if (!this.dockerAvailable) return false;
+    if (!isValidContainerName(containerName)) return false;
     try {
-      execSync(`docker rm -f ${containerName}`, { encoding: 'utf-8', timeout: 30000 });
+      safeExec('docker', ['rm', '-f', containerName], { timeout: 30000 });
       return true;
     } catch { return false; }
   }
@@ -209,11 +275,15 @@ export class HostingEngine {
   // List all user containers
   listUserContainers(userId: string): HostingContainer[] {
     if (!this.dockerAvailable) return [];
+    if (!isValidUserId(userId)) return [];
     try {
-      const output = execSync(
-        `docker ps -a --filter "name=fc-${userId.substring(0, 8)}" --format "{{.ID}}|{{.Names}}|{{.Status}}|{{.Image}}|{{.Ports}}"`,
-        { encoding: 'utf-8', timeout: 10000 }
-      );
+      // userId is only used as a prefix filter — validate it's alphanumeric
+      const safePrefix = userId.substring(0, 8).replace(/[^a-zA-Z0-9]/g, '');
+      const output = safeExec('docker', [
+        'ps', '-a',
+        '--filter', `name=fc-${safePrefix}`,
+        '--format', '{{.ID}}|{{.Names}}|{{.Status}}|{{.Image}}|{{.Ports}}',
+      ], { timeout: 10000 });
       return output.trim().split('\n').filter(Boolean).map(line => {
         const [id, name, status, image, ports] = line.split('|');
         return { id: id!, name: name!, status: status!, image: image!, ports: ports ? [ports] : [], createdAt: '' };
@@ -226,9 +296,10 @@ export class HostingEngine {
     const basePort = 10000;
     const maxPort = 65535;
     try {
-      const usedPorts = execSync(
+      // This piped command requires shell syntax — use safeShellExec
+      const usedPorts = safeShellExec(
         `docker ps --format "{{.Ports}}" | grep -oP '0\\.0\\.0\\.0:(\\d+)' | grep -oP '(?<=:)\\d+' | sort -u`,
-        { encoding: 'utf-8', timeout: 10000 }
+        { timeout: 10000 }
       );
       const used = new Set(usedPorts.trim().split('\n').filter(Boolean).map(Number));
       for (let port = basePort; port < maxPort; port++) {
@@ -241,8 +312,11 @@ export class HostingEngine {
   // Get container logs
   getContainerLogs(containerName: string, lines: number = 50): string {
     if (!this.dockerAvailable) return 'Docker not available';
+    if (!isValidContainerName(containerName)) return 'Invalid container name';
+    // Validate lines is a safe integer
+    const safeLines = Math.max(1, Math.min(500, Math.floor(lines)));
     try {
-      return execSync(`docker logs --tail ${lines} ${containerName} 2>&1`, { encoding: 'utf-8', timeout: 10000 });
+      return safeExec('docker', ['logs', '--tail', String(safeLines), containerName], { timeout: 10000 });
     } catch (error: any) {
       return error.message;
     }

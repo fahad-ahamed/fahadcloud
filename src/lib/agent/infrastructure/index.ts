@@ -1,17 +1,29 @@
-// @ts-nocheck
-// ============ INFRASTRUCTURE CONTROL ============
+// ============ INFRASTRUCTURE CONTROL v2.0 ============
 // Docker/K8s orchestration, server cluster management,
 // networking, IaC generation, and environment replication
+// Now using safe shell execution to prevent command injection
 
 import { db } from '@/lib/db';
 import { AgentId, generateId } from '../types';
 import { appConfig } from '@/lib/config/app.config';
+import { safeExec, safeShellExec } from '@/lib/shell-utils';
 
 // Local types
 interface ContainerSpec { name: string; image: string; ports: number[]; env: Record<string, string>; cpu: string; memory: string; volumes?: string[]; }
-interface ClusterNode { id: string; name: string; status: string; cpu: number; memory: number; ram?: number; disk?: number; containers: number; ip?: string; region?: string; }
+interface ClusterNode { id: string; name: string; status: string; cpu: number; memory: number; ram?: number; disk?: number; containers: number; ip?: string; region?: string; labels?: Record<string, string>; }
 
+// Input validation helpers
+function isValidContainerId(id: string): boolean {
+  return /^[a-f0-9]{1,64}$/i.test(id) || /^fc-[a-z0-9-]+$/i.test(id);
+}
 
+function isValidContainerName(name: string): boolean {
+  return /^[a-zA-Z0-9][a-zA-Z0-9_.-]{0,127}$/.test(name);
+}
+
+function isValidImageName(image: string): boolean {
+  return /^[a-zA-Z0-9_.\/:-]{1,256}$/.test(image);
+}
 
 // ============ INFRASTRUCTURE ENGINE ============
 
@@ -21,16 +33,15 @@ export class InfrastructureEngine {
 
   async listContainers(): Promise<{ containers: any[]; total: number }> {
     try {
-      const { execSync } = require('child_process');
-      const output = execSync('docker ps -a --format "{{.ID}}|{{.Names}}|{{.Status}}|{{.Image}}|{{.Ports}}" 2>/dev/null || echo "NO_DOCKER"', { encoding: 'utf-8', timeout: 10000 });
+      const output = safeExec('docker', ['ps', '-a', '--format', '{{.ID}}|{{.Names}}|{{.Status}}|{{.Image}}|{{.Ports}}'], { timeout: 10000 });
       
-      if (output.includes('NO_DOCKER')) {
+      if (!output || !output.trim()) {
         return { containers: [], total: 0 };
       }
 
       const containers = output.trim().split('\n').filter(Boolean).map(line => {
         const [id, name, status, image, ports] = line.split('|');
-        return { id, name, status, image, ports, running: status.includes('Up') };
+        return { id, name, status, image, ports, running: status?.includes('Up') };
       });
 
       return { containers, total: containers.length };
@@ -41,13 +52,48 @@ export class InfrastructureEngine {
 
   async createContainer(spec: ContainerSpec): Promise<{ created: boolean; containerId?: string; error?: string }> {
     try {
-      const { execSync } = require('child_process');
-      const envFlags = Object.entries(spec.env).map(([k, v]) => `-e ${k}=${v}`).join(' ');
-      const portFlags = spec.ports.map(p => `-p ${p}:${p}`).join(' ');
-      const volumeFlags = Object.entries(spec.volumes).map(([k, v]) => `-v ${k}:${v}`).join(' ');
+      // Validate inputs
+      if (!isValidContainerName(spec.name)) {
+        return { created: false, error: 'Invalid container name' };
+      }
+      if (!isValidImageName(spec.image)) {
+        return { created: false, error: 'Invalid image name' };
+      }
+
+      // Build docker run arguments safely using array
+      const args = ['run', '-d', '--name', spec.name];
       
-      const cmd = `docker run -d --name ${spec.name} ${envFlags} ${portFlags} ${volumeFlags} ${spec.image}`;
-      const output = execSync(cmd, { encoding: 'utf-8', timeout: 60000 });
+      // Add memory limit
+      args.push('--memory', spec.memory || '256m');
+      // Add CPU limit
+      args.push('--cpus', spec.cpu || '0.5');
+      // Add restart policy
+      args.push('--restart', 'unless-stopped');
+
+      // Add environment variables safely
+      for (const [key, value] of Object.entries(spec.env || {})) {
+        if (/^[A-Za-z_][A-Za-z0-9_]*$/.test(key)) {
+          args.push('-e', `${key}=${value}`);
+        }
+      }
+
+      // Add port mappings safely
+      for (const port of (spec.ports || [])) {
+        if (Number.isInteger(port) && port > 0 && port <= 65535) {
+          args.push('-p', `${port}:${port}`);
+        }
+      }
+
+      // Add volume mounts safely
+      if (spec.volumes) {
+        for (const [host, container] of Object.entries(spec.volumes)) {
+          args.push('-v', `${host}:${container}`);
+        }
+      }
+
+      args.push(spec.image);
+
+      const output = safeExec('docker', args, { timeout: 60000 });
       
       return { created: true, containerId: output.trim() };
     } catch (error: any) {
@@ -57,8 +103,16 @@ export class InfrastructureEngine {
 
   async manageContainer(containerId: string, action: 'start' | 'stop' | 'restart' | 'remove'): Promise<{ success: boolean; error?: string }> {
     try {
-      const { execSync } = require('child_process');
-      execSync(`docker ${action === 'remove' ? 'rm -f' : action} ${containerId}`, { encoding: 'utf-8', timeout: 30000 });
+      // Validate container ID
+      if (!isValidContainerId(containerId)) {
+        return { success: false, error: 'Invalid container ID' };
+      }
+
+      if (action === 'remove') {
+        safeExec('docker', ['rm', '-f', containerId], { timeout: 30000 });
+      } else {
+        safeExec('docker', [action, containerId], { timeout: 30000 });
+      }
       return { success: true };
     } catch (error: any) {
       return { success: false, error: error.message };
@@ -79,6 +133,7 @@ export class InfrastructureEngine {
         ip: appConfig.serverIp,
         status: sysInfo.cpu < 80 && sysInfo.ram < 80 ? 'healthy' : 'warning',
         cpu: sysInfo.cpu,
+        memory: sysInfo.ramUsed || 0,
         ram: sysInfo.ram,
         disk: sysInfo.disk,
         containers: 0,
@@ -123,7 +178,7 @@ export class InfrastructureEngine {
         return `version: '3.8'
 services:
   web:
-    image: node:18-alpine
+    image: node:20-alpine
     ports:
       - "3000:3000"
     volumes:
@@ -135,22 +190,44 @@ services:
       - PORT=3000
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:3000"]
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:3000/api/health"]
       interval: 30s
       timeout: 10s
       retries: 3
+    deploy:
+      resources:
+        limits:
+          memory: 1G
 
   db:
-    image: sqlite:latest
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: fahadcloud
+      POSTGRES_USER: fahadcloud
     volumes:
-      - ./data:/data
+      - postgres-data:/var/lib/postgresql/data
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U fahadcloud"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
 
   redis:
     image: redis:7-alpine
-    ports:
-      - "6379:6379"
+    command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru
+    volumes:
+      - redis-data:/data
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  postgres-data:
+  redis-data:
 `;
 
       case 'nginx':
@@ -167,7 +244,13 @@ server {
     ssl_certificate /etc/letsencrypt/live/domain/fullchain.pem;
     ssl_certificate_key /etc/letsencrypt/live/domain/privkey.pem;
     ssl_protocols TLSv1.2 TLSv1.3;
-    ssl_ciphers HIGH:!aNULL:!MD5;
+    ssl_ciphers ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384;
+    ssl_prefer_server_ciphers off;
+
+    # Security headers
+    add_header X-Frame-Options DENY always;
+    add_header X-Content-Type-Options nosniff always;
+    add_header Strict-Transport-Security "max-age=63072000; includeSubDomains; preload" always;
 
     location / {
         proxy_pass http://127.0.0.1:3000;
@@ -181,8 +264,14 @@ server {
         proxy_cache_bypass $http_upgrade;
     }
 
+    # Static assets caching
+    location /_next/static/ {
+        proxy_pass http://127.0.0.1:3000;
+        add_header Cache-Control "public, immutable, max-age=31536000";
+    }
+
     gzip on;
-    gzip_types text/plain text/css application/json application/javascript text/xml;
+    gzip_types text/plain text/css application/json application/javascript text/xml application/xml;
     gzip_min_length 256;
 }
 `;
@@ -190,17 +279,20 @@ server {
       case 'systemd':
         return `[Unit]
 Description=FahadCloud Application
-After=network.target
+After=network.target postgresql.service redis.service
+Wants=postgresql.service redis.service
 
 [Service]
 Type=simple
 User=fahad
 WorkingDirectory=${appConfig.projectRoot}
-ExecStart=/usr/bin/npm start
-Restart=always
+ExecStart=/usr/bin/node .next/standalone/server.js
+Restart=on-failure
 RestartSec=10
 Environment=NODE_ENV=production
 Environment=PORT=3000
+LimitNOFILE=65536
+MemoryMax=1G
 
 [Install]
 WantedBy=multi-user.target
@@ -212,6 +304,11 @@ WantedBy=multi-user.target
 
   async replicateEnvironment(sourceEnvId: string, targetName: string): Promise<{ success: boolean; newEnvId?: string; error?: string }> {
     try {
+      // Validate target name
+      if (!/^[a-zA-Z0-9-_]{1,64}$/.test(targetName)) {
+        return { success: false, error: 'Invalid target name format' };
+      }
+
       const source = await db.hostingEnvironment.findUnique({ where: { id: sourceEnvId } });
       if (!source) return { success: false, error: 'Source environment not found' };
 

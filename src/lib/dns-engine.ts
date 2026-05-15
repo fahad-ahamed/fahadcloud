@@ -1,8 +1,9 @@
 // DNS Engine v3.0 - Manages DNS zone files AND serves them via dnsmasq
 // Fixed: DNS records are now actually served, not just written to files
+// SECURITY: Uses safeExec/safeShellExec; inputs validated before use
 
-import { writeFileSync, readFileSync, mkdirSync, existsSync, readdirSync, appendFileSync, unlinkSync } from 'fs';
-import { execSync } from 'child_process';
+import { writeFileSync, readFileSync, mkdirSync, existsSync, readdirSync, unlinkSync } from 'fs';
+import { safeExec, safeShellExec } from '@/lib/shell-utils';
 import path from 'path';
 import { appConfig } from '@/lib/config/app.config';
 
@@ -10,6 +11,51 @@ const ZONES_DIR = appConfig.dns.zonesDir;
 const DNS_CONFIG_DIR = appConfig.dns.configDir;
 const DNSMASQ_CONF = appConfig.dns.dnsmasqConf;
 const DNSMASQ_HOSTS = appConfig.dns.dnsmasqHosts;
+
+// ============ INPUT VALIDATION ============
+
+/**
+ * Validates a domain name against RFC 1035 — only allows alphanumeric, dots, and hyphens.
+ * Rejects any domain containing shell metacharacters.
+ */
+function isValidDomain(domain: string): boolean {
+  return /^[a-zA-Z0-9]([a-zA-Z0-9-]*[a-zA-Z0-9])?(\.[a-zA-Z0-9]([a-zA-Z0-9-]*[a-zA-Z0-9])?)*\.[a-zA-Z]{2,}$/.test(domain) && domain.length <= 253;
+}
+
+/**
+ * Validates a DNS record value — must be safe for zone files and command interpolation.
+ * Allows: alphanumeric, dots, hyphens, underscores, colons, spaces (for TXT), slashes
+ */
+function isValidRecordValue(value: string, type: string): boolean {
+  // Block any shell metacharacters
+  if (/[`$\\;"!|&<>(){}[\]]/.test(value)) return false;
+  if (value.length > 255) return false;
+
+  switch (type.toUpperCase()) {
+    case 'A':
+      return /^(\d{1,3}\.){3}\d{1,3}$/.test(value);
+    case 'AAAA':
+      return /^[0-9a-fA-F:]+$/.test(value);
+    case 'CNAME':
+    case 'NS':
+      return isValidDomain(value) || value.endsWith('.') && isValidDomain(value.slice(0, -1));
+    case 'MX':
+      return isValidDomain(value) || value.endsWith('.') && isValidDomain(value.slice(0, -1));
+    case 'TXT':
+      return value.length > 0;
+    case 'SRV':
+      return value.length > 0 && !/[`$\\;"!|&<>(){}[\]]/.test(value);
+    default:
+      return false;
+  }
+}
+
+/**
+ * Validates a DNS record name — allows @, alphanumeric, dots, hyphens, underscores
+ */
+function isValidRecordName(name: string): boolean {
+  return /^[@*a-zA-Z0-9._-]+$/.test(name) && name.length <= 253;
+}
 
 export interface DnsZone {
   domain: string;
@@ -37,13 +83,13 @@ export class DnsEngine {
 
   private checkDnsmasq(): void {
     try {
-      execSync('which dnsmasq', { timeout: 5000, encoding: 'utf-8' });
+      safeExec('which', ['dnsmasq'], { timeout: 5000 });
       this.dnsmasqRunning = true;
     } catch {
       this.dnsmasqRunning = false;
       // Try to install dnsmasq
       try {
-        execSync('sudo apt-get install -y dnsmasq 2>&1', { timeout: 60000, encoding: 'utf-8' });
+        safeShellExec('sudo apt-get install -y dnsmasq 2>&1', { timeout: 60000 });
         this.dnsmasqRunning = true;
       } catch {
         console.error('dnsmasq not available - DNS records will be written but not served');
@@ -57,6 +103,10 @@ export class DnsEngine {
 
   // Generate a zone file for a domain
   generateZoneFile(domain: string, records: DnsZoneRecord[]): string {
+    if (!isValidDomain(domain)) {
+      throw new Error(`Invalid domain name: ${domain}`);
+    }
+
     const serial = Math.floor(Date.now() / 1000);
     const ns1 = 'ns1.fahadcloud.com';
     const ns2 = 'ns2.fahadcloud.com';
@@ -79,6 +129,16 @@ export class DnsEngine {
     zoneFile += `www     IN  A    ${serverIp}\n\n`;
 
     for (const record of records) {
+      // Validate each record before writing
+      if (!isValidRecordName(record.name)) {
+        console.warn(`Skipping invalid DNS record name: ${record.name}`);
+        continue;
+      }
+      if (!isValidRecordValue(record.value, record.type)) {
+        console.warn(`Skipping invalid DNS record value for ${record.name} (${record.type}): ${record.value}`);
+        continue;
+      }
+
       const name = record.name === '@' ? '@' : record.name.replace(`.${domain}`, '');
       const ttl = record.ttl || 3600;
 
@@ -112,6 +172,10 @@ export class DnsEngine {
 
   // Write zone file for a domain AND serve it
   writeZoneFile(domain: string, records: DnsZoneRecord[]): { success: boolean; path: string; serving: boolean; error?: string } {
+    if (!isValidDomain(domain)) {
+      return { success: false, path: '', serving: false, error: `Invalid domain name: ${domain}` };
+    }
+
     try {
       const zoneContent = this.generateZoneFile(domain, records);
       const filePath = path.join(ZONES_DIR, `${domain}.zone`);
@@ -134,8 +198,13 @@ export class DnsEngine {
     try {
       // Build hosts file entries
       let hostsContent = `# FahadCloud DNS - ${domain}\n`;
-      
+
       for (const record of records) {
+        // Validate record before writing
+        if (!isValidRecordName(record.name) || !isValidRecordValue(record.value, record.type)) {
+          continue;
+        }
+
         switch (record.type.toUpperCase()) {
           case 'A':
             hostsContent += `${record.value} ${record.name === '@' ? domain : `${record.name}.${domain}`}\n`;
@@ -186,7 +255,7 @@ export class DnsEngine {
       // Include all domain-specific hosts files
       const hostsFiles = readdirSync(DNS_CONFIG_DIR)
         .filter(f => f.endsWith('.hosts'));
-      
+
       for (const hf of hostsFiles) {
         config += `addn-hosts=${path.join(DNS_CONFIG_DIR, hf)}\n`;
       }
@@ -208,6 +277,7 @@ export class DnsEngine {
 
   // Read zone file for a domain
   readZoneFile(domain: string): string | null {
+    if (!isValidDomain(domain)) return null;
     try {
       const filePath = path.join(ZONES_DIR, `${domain}.zone`);
       if (!existsSync(filePath)) return null;
@@ -226,13 +296,14 @@ export class DnsEngine {
 
   // Delete a zone
   deleteZone(domain: string): boolean {
+    if (!isValidDomain(domain)) return false;
     try {
       const zonePath = path.join(ZONES_DIR, `${domain}.zone`);
       const hostsPath = path.join(DNS_CONFIG_DIR, `${domain}.hosts`);
-      
+
       if (existsSync(zonePath)) unlinkSync(zonePath);
       if (existsSync(hostsPath)) unlinkSync(hostsPath);
-      
+
       this.rebuildDnsmasqConfig();
       this.reloadDnsServer();
       return true;
@@ -241,20 +312,20 @@ export class DnsEngine {
     }
   }
 
-  // Reload DNS server - NOW ACTUALLY WORKS
+  // Reload DNS server - uses safeShellExec for commands with shell redirects
   reloadDnsServer(): { success: boolean; error?: string } {
     try {
       // Try dnsmasq first (preferred)
       if (this.dnsmasqRunning) {
         try {
-          execSync('sudo systemctl restart dnsmasq 2>/dev/null || sudo service dnsmasq restart 2>/dev/null', { encoding: 'utf-8', timeout: 10000 });
+          safeShellExec('sudo systemctl restart dnsmasq 2>/dev/null || sudo service dnsmasq restart 2>/dev/null', { timeout: 10000 });
           return { success: true };
         } catch {}
       }
 
       // Try BIND/named as fallback
       try {
-        execSync('sudo rndc reload 2>/dev/null', { encoding: 'utf-8', timeout: 10000 });
+        safeExec('sudo', ['rndc', 'reload'], { timeout: 10000 });
         return { success: true };
       } catch {}
 
@@ -268,7 +339,7 @@ export class DnsEngine {
   startDnsServer(): { success: boolean; error?: string } {
     try {
       if (this.dnsmasqRunning) {
-        execSync('sudo systemctl start dnsmasq 2>/dev/null || sudo service dnsmasq start 2>/dev/null', { encoding: 'utf-8', timeout: 10000 });
+        safeShellExec('sudo systemctl start dnsmasq 2>/dev/null || sudo service dnsmasq start 2>/dev/null', { timeout: 10000 });
         return { success: true };
       }
       return { success: false, error: 'dnsmasq not installed' };
@@ -280,7 +351,7 @@ export class DnsEngine {
   // Stop DNS server
   stopDnsServer(): { success: boolean; error?: string } {
     try {
-      execSync('sudo systemctl stop dnsmasq 2>/dev/null || sudo service dnsmasq stop 2>/dev/null', { encoding: 'utf-8', timeout: 10000 });
+      safeShellExec('sudo systemctl stop dnsmasq 2>/dev/null || sudo service dnsmasq stop 2>/dev/null', { timeout: 10000 });
       return { success: true };
     } catch (error: any) {
       return { success: false, error: error.message };
@@ -290,7 +361,7 @@ export class DnsEngine {
   // Get DNS server status
   getDnsServerStatus(): { running: boolean; server: string; zonesServed: number; port: number } {
     try {
-      const result = execSync('sudo systemctl is-active dnsmasq 2>/dev/null || echo "inactive"', { encoding: 'utf-8', timeout: 5000 }).trim();
+      const result = safeShellExec('sudo systemctl is-active dnsmasq 2>/dev/null || echo "inactive"', { timeout: 5000 }).trim();
       return {
         running: result === 'active',
         server: 'dnsmasq',
@@ -304,10 +375,30 @@ export class DnsEngine {
 
   // Test DNS resolution for a domain
   testResolution(domain: string): { resolved: boolean; ip?: string; error?: string } {
+    if (!isValidDomain(domain)) {
+      return { resolved: false, error: `Invalid domain name: ${domain}` };
+    }
     try {
-      const result = execSync(`dig @localhost ${domain} +short 2>/dev/null || nslookup ${domain} localhost 2>/dev/null`, { encoding: 'utf-8', timeout: 10000 });
-      const ip = result.trim().split('\n')[0];
-      return { resolved: !!ip, ip: ip || undefined };
+      // Try dig first with array-based args
+      try {
+        const result = safeExec('dig', ['@localhost', domain, '+short'], { timeout: 10000 });
+        const ip = result.trim().split('\n')[0];
+        if (ip) return { resolved: true, ip };
+      } catch {}
+
+      // Fallback to nslookup with array-based args
+      try {
+        const result = safeExec('nslookup', [domain, 'localhost'], { timeout: 10000 });
+        const lines = result.trim().split('\n');
+        for (let i = 0; i < lines.length; i++) {
+          if (lines[i]?.includes('Address:') && i > 0) {
+            const ip = lines[i]?.replace(/Address:\s*/, '').trim();
+            if (ip) return { resolved: true, ip };
+          }
+        }
+      } catch {}
+
+      return { resolved: false, error: 'Could not resolve domain' };
     } catch (error: any) {
       return { resolved: false, error: error.message };
     }

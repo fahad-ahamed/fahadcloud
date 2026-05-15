@@ -1,10 +1,11 @@
-// @ts-nocheck
-// ============ ADVANCED SECURITY AI ============
+// ============ ADVANCED SECURITY AI v2.0 ============
 // Intrusion detection, malware scanning, behavioral anomaly detection,
 // firewall optimization, exploit prevention, and secure sandbox execution
+// Now using safe shell execution to prevent command injection
 
 import { db } from '@/lib/db';
 import { AgentId, SecurityEvent, SecurityPolicy, SecurityRule, generateId } from '../types';
+import { safeExec, safeShellExec } from '@/lib/shell-utils';
 
 
 
@@ -165,13 +166,17 @@ export class SecurityEngine {
 
   // ============ MALWARE SCANNING ============
 
-  async scanForMalware(path: string): Promise<{ clean: boolean; threats: string[]; scannedFiles: number }> {
+  async scanForMalware(scanPath: string): Promise<{ clean: boolean; threats: string[]; scannedFiles: number }> {
     const threats: string[] = [];
     let scannedFiles = 0;
 
+    // Validate path to prevent traversal
+    if (!scanPath || /\.\./.test(scanPath) || !scanPath.startsWith('/')) {
+      return { clean: false, threats: ['Invalid scan path'], scannedFiles: 0 };
+    }
+
     try {
       const fs = require('fs');
-      const { execSync } = require('child_process');
       
       // Check for common malware signatures
       const malwareSignatures = [
@@ -182,10 +187,10 @@ export class SecurityEngine {
         { pattern: /\\x[0-9a-f]{2}\\x[0-9a-f]{2}\\x[0-9a-f]{2}/i, name: 'Hex-encoded payload' },
       ];
 
-      // Quick scan
+      // Quick scan using safeExec
       try {
-        const output = execSync(`find ${path} -type f -name "*.php" -o -name "*.js" -o -name "*.py" 2>/dev/null | head -50`, { encoding: 'utf-8', timeout: 10000 });
-        const files = output.trim().split('\n').filter(Boolean);
+        const output = safeExec('find', [scanPath, '-type', 'f', '(', '-name', '*.php', '-o', '-name', '*.js', '-o', '-name', '*.py', ')'], { timeout: 10000 });
+        const files = output.trim().split('\n').filter(Boolean).slice(0, 50);
         scannedFiles = files.length;
 
         for (const file of files) {
