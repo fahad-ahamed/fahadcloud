@@ -1,0 +1,47 @@
+[Unit]
+Description=FahadCloud Next.js Application
+Documentation=https://fahadcloud.com
+After=network.target postgresql.service redis.service
+Wants=postgresql.service redis.service
+
+[Service]
+Type=simple
+User=fahad
+Group=fahad
+WorkingDirectory=/home/fahad/fahadcloud
+EnvironmentFile=/home/fahad/fahadcloud/.env
+ExecStart=/usr/bin/node .next/standalone/server.js
+ExecStop=/bin/kill -SIGTERM $MAINPID
+
+# Restart Policy
+Restart=on-failure
+RestartSec=10
+StartLimitIntervalSec=300
+StartLimitBurst=5
+
+# Process Management
+KillMode=mixed
+KillSignal=SIGTERM
+TimeoutStartSec=30
+TimeoutStopSec=30
+
+# Security Hardening
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=read-only
+ReadWritePaths=/home/fahad/fahadcloud/logs
+ReadOnlyPaths=/home/fahad/fahadcloud/.next
+
+# Resource Limits
+LimitNOFILE=65536
+MemoryMax=1G
+CPUQuota=200%
+
+# Logging
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=fahadcloud
+
+[Install]
+WantedBy=multi-user.target

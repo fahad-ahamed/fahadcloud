@@ -8,6 +8,12 @@ export async function POST(request: NextRequest) {
     if (!token) return NextResponse.json({ error: 'Auth required' }, { status: 401 });
 
     const { jwtVerify } = await import('jose');
+    if (!process.env.JWT_SECRET) {
+      if (process.env.NODE_ENV === 'production') {
+        return NextResponse.json({ error: 'Server configuration error' }, { status: 500 });
+      }
+      console.warn('[SHELL] WARNING: Using fallback JWT secret. Set JWT_SECRET env var.');
+    }
     const secret = new TextEncoder().encode(process.env.JWT_SECRET || 'fallback-dev-secret-change-in-prod');
     let payload: any;
     try { payload = (await jwtVerify(token, secret)).payload; } catch { return NextResponse.json({ error: 'Invalid token' }, { status: 401 }); }
@@ -22,7 +28,8 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Account blocked' }, { status: 403 });
     }
 
-    const isAdmin = user.role === 'admin' || user.adminRole === 'super_admin' || user.email === 'admin@fahadcloud.com' || user.email === 'fahadcloud24@gmail.com';
+    const adminEmails = (process.env.ADMIN_EMAILS || '').split(',').map(e => e.trim().toLowerCase()).filter(Boolean);
+    const isAdmin = user.role === 'admin' || user.adminRole === 'super_admin' || adminEmails.includes(user.email.toLowerCase());
 
     const body = await request.json();
     const { command } = body;
@@ -65,7 +72,7 @@ export async function POST(request: NextRequest) {
 CPU: ${Math.round(os.loadavg()[0] / cpus.length * 100)}% (${cpus.length} cores)
 RAM: ${Math.round((totalMem - freeMem) / totalMem * 100)}% (${Math.round((totalMem - freeMem) / 1024 / 1024)}MB / ${Math.round(totalMem / 1024 / 1024)}MB)
 Uptime: ${Math.floor(os.uptime() / 3600)}h ${Math.floor((os.uptime() % 3600) / 60)}m
-Load: ${os.loadavg().map(l => l.toFixed(2)).join(', ')}
+Load: ${os.loadavg().map((l: number) => l.toFixed(2)).join(', ')}
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 AI Agents: 14 active
 Orchestrator: Online

@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { PrismaClient } from '@prisma/client';
+import { db } from '@/lib/db';
 import { executeApprovedTask, oneClickDeploy } from '@/lib/agent/core';
 
-const prisma = new PrismaClient();
+
 
 // GET /api/agent/tasks - List tasks
 export async function GET(request: NextRequest) {
@@ -24,7 +24,7 @@ export async function GET(request: NextRequest) {
     if (status) where.status = status;
     if (type) where.type = type;
 
-    const tasks = await prisma.agentTask.findMany({
+    const tasks = await db.agentTask.findMany({
       where,
       orderBy: { createdAt: 'desc' },
       take: 50,
@@ -53,7 +53,7 @@ export async function POST(request: NextRequest) {
     const { action, taskId, deployConfig } = body;
 
     if (action === 'approve' && taskId) {
-      const task = await prisma.agentTask.findUnique({ where: { id: taskId } });
+      const task = await db.agentTask.findUnique({ where: { id: taskId } });
       if (!task || (task.userId !== userId && payload.role !== 'admin')) {
         return NextResponse.json({ error: 'Task not found or unauthorized' }, { status: 404 });
       }
@@ -62,7 +62,7 @@ export async function POST(request: NextRequest) {
     }
 
     if (action === 'cancel' && taskId) {
-      await prisma.agentTask.update({
+      await db.agentTask.update({
         where: { id: taskId },
         data: { status: 'cancelled' },
       });

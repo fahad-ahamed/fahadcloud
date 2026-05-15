@@ -44,4 +44,4 @@ pm2 save
 
 echo ""
 echo "FahadCloud is running at http://localhost:3000"
-echo "Admin: fahadcloud24@gmail.com / Admin@2024"
+echo "Admin: Set up admin access via the admin login flow at /admin"

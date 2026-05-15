@@ -23,7 +23,7 @@ export async function GET(request: NextRequest) {
     ]);
 
     return NextResponse.json({
-      payments: result.items.map(p => ({
+      payments: result.items.map((p: any) => ({
         id: p.id,
         orderId: p.orderId,
         amount: p.amount,

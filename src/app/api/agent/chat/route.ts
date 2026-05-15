@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { PrismaClient } from '@prisma/client';
+import { db } from '@/lib/db';
 import { getOrchestrator } from '@/lib/agent/orchestrator';
 import { classifyIntent } from '@/lib/agent/core';
 import { getAutoLearningEngine } from '@/lib/agent/auto-learning';
 import { aiClassifyIntent } from '@/lib/agent/ai-engine';
 
-const prisma = new PrismaClient();
+
 
 // POST /api/agent/chat - Main AI chat endpoint with REAL AI multi-agent orchestration
 export async function POST(request: NextRequest) {
@@ -41,14 +41,14 @@ export async function POST(request: NextRequest) {
     // Get or create session
     let activeSessionId = sessionId;
     if (!activeSessionId) {
-      const session = await prisma.agentSession.create({
+      const session = await db.agentSession.create({
         data: { userId, title: message.substring(0, 50), context: JSON.stringify({}) },
       });
       activeSessionId = session.id;
     } else {
-      const session = await prisma.agentSession.findUnique({ where: { id: activeSessionId } });
+      const session = await db.agentSession.findUnique({ where: { id: activeSessionId } });
       if (!session || session.userId !== userId) {
-        const newSession = await prisma.agentSession.create({
+        const newSession = await db.agentSession.create({
           data: { userId, title: message.substring(0, 50), context: JSON.stringify({}) },
         });
         activeSessionId = newSession.id;
@@ -56,12 +56,12 @@ export async function POST(request: NextRequest) {
     }
 
     // Store user message
-    await prisma.agentMessage.create({
+    await db.agentMessage.create({
       data: { sessionId: activeSessionId, role: 'user', content: message },
     });
 
     // Get conversation history
-    const history = await prisma.agentMessage.findMany({
+    const history = await db.agentMessage.findMany({
       where: { sessionId: activeSessionId },
       orderBy: { createdAt: 'asc' },
       take: 50,
@@ -127,7 +127,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Store assistant message
-    await prisma.agentMessage.create({
+    await db.agentMessage.create({
       data: {
         sessionId: activeSessionId,
         role: 'assistant',
@@ -146,7 +146,7 @@ export async function POST(request: NextRequest) {
 
     // Store workflow memory
     try {
-      await prisma.agentMemory.create({
+      await db.agentMemory.create({
         data: {
           userId,
           type: 'workflow',
@@ -217,7 +217,7 @@ export async function GET(request: NextRequest) {
     const sessionId = searchParams.get('sessionId');
 
     if (sessionId) {
-      const messages = await prisma.agentMessage.findMany({
+      const messages = await db.agentMessage.findMany({
         where: { sessionId },
         orderBy: { createdAt: 'asc' },
         take: 100,
@@ -225,7 +225,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ messages });
     }
 
-    const sessions = await prisma.agentSession.findMany({
+    const sessions = await db.agentSession.findMany({
       where: { userId },
       orderBy: { updatedAt: 'desc' },
       take: 20,

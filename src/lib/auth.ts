@@ -1,6 +1,12 @@
 import { SignJWT, jwtVerify } from 'jose';
 import { cookies } from 'next/headers';
 
+if (!process.env.JWT_SECRET) {
+  if (process.env.NODE_ENV === 'production') {
+    throw new Error('FATAL: JWT_SECRET environment variable must be set in production');
+  }
+  console.warn('[AUTH] WARNING: Using fallback JWT secret. Set JWT_SECRET env var for production.');
+}
 const secret = new TextEncoder().encode(process.env.JWT_SECRET || 'fallback-dev-secret-change-in-prod');
 
 interface TokenPayload {

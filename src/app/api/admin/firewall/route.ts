@@ -1,14 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/middleware";
+import { db } from '@/lib/db';
 
 export const dynamic = "force-dynamic";
 
 export async function GET() {
   try {
-    const { PrismaClient } = await import("@prisma/client");
-    const prisma = new PrismaClient();
-    const rules = await prisma.firewallRule.findMany({ orderBy: { priority: "asc" } });
-    await prisma.$disconnect();
+    const rules = await db.firewallRule.findMany({ orderBy: { priority: "asc" } });
     return NextResponse.json({ rules });
   } catch (e: any) {
     return NextResponse.json({ error: e.message }, { status: 500 });
@@ -24,10 +22,7 @@ export async function POST(request: NextRequest) {
     const { name, type, ip, port, protocol, priority } = body;
     if (!name || !type) return NextResponse.json({ error: "name and type are required" }, { status: 400 });
 
-    const { PrismaClient } = await import("@prisma/client");
-    const prisma = new PrismaClient();
-    const rule = await prisma.firewallRule.create({ data: { name, type, ip, port, protocol, priority: priority || 100 } });
-    await prisma.$disconnect();
+    const rule = await db.firewallRule.create({ data: { name, type, ip, port, protocol, priority: priority || 100 } });
     return NextResponse.json({ rule, message: "Firewall rule created" });
   } catch (e: any) {
     return NextResponse.json({ error: e.message }, { status: 500 });
@@ -43,10 +38,7 @@ export async function DELETE(request: NextRequest) {
     const id = searchParams.get("id");
     if (!id) return NextResponse.json({ error: "id required" }, { status: 400 });
 
-    const { PrismaClient } = await import("@prisma/client");
-    const prisma = new PrismaClient();
-    await prisma.firewallRule.delete({ where: { id } });
-    await prisma.$disconnect();
+    await db.firewallRule.delete({ where: { id } });
     return NextResponse.json({ message: "Firewall rule deleted" });
   } catch (e: any) {
     return NextResponse.json({ error: e.message }, { status: 500 });

@@ -166,7 +166,7 @@ async function processTaskAsync(
 
       const { aiChat } = await import('@/lib/agent/ai-engine');
       const aiResult = await aiChat([
-        { role: 'system', content: systemPrompts[agentType] || systemPrompts.master_controller },
+        { role: 'system', content: systemPrompts[agentType] || systemPrompts.master_controller || '' },
         { role: 'user', content: `Task: ${description}\nInput: ${JSON.stringify(input || {}).substring(0, 1000)}\n\nComplete this task and provide the result.` },
       ], { temperature: 0.3, maxTokens: 2000 });
 

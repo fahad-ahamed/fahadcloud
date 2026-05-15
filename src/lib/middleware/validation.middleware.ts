@@ -47,7 +47,7 @@ export function validateDomainName(domain: string): { valid: boolean; error?: st
   if (!domain) return { valid: false, error: "Domain name is required" };
   const domainLower = domain.toLowerCase().trim();
   if (!domainLower.includes(".")) return { valid: false, error: "Full domain name required (e.g., example.com)" };
-  const sld = domainLower.split(".")[0];
+  const sld = domainLower.split(".")[0]!;
   const domainRegex = /^[a-z0-9]([a-z0-9-]*[a-z0-9])?$/;
   if (!domainRegex.test(sld) || sld.length < 1 || sld.length > 63) {
     return { valid: false, error: "Invalid domain name format" };

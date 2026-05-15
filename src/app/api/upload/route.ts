@@ -4,6 +4,7 @@ import { getCurrentUser } from '@/lib/auth';
 import { checkRateLimit } from '@/lib/rateLimit';
 import { writeFile, mkdir } from 'fs/promises';
 import path from 'path';
+import { appConfig } from '@/lib/config/app.config';
 
 const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50MB
 const ALLOWED_TYPES = [
@@ -68,7 +69,7 @@ export async function POST(request: NextRequest) {
 
     // Sanitize directory path
     const sanitizedDir = directory.replace(/\.\./g, '').replace(/\/\//g, '/');
-    const baseDir = `/home/fahad/hosting/${currentUser.userId}`;
+    const baseDir = `${appConfig.hosting.baseDir}/${currentUser.userId}`;
     const fullDir = path.join(baseDir, sanitizedDir);
 
     // Ensure directory exists

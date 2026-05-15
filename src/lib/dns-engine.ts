@@ -4,11 +4,12 @@
 import { writeFileSync, readFileSync, mkdirSync, existsSync, readdirSync, appendFileSync, unlinkSync } from 'fs';
 import { execSync } from 'child_process';
 import path from 'path';
+import { appConfig } from '@/lib/config/app.config';
 
-const ZONES_DIR = '/home/fahad/dns/zones';
-const DNS_CONFIG_DIR = '/home/fahad/dns/config';
-const DNSMASQ_CONF = '/home/fahad/dns/dnsmasq.conf';
-const DNSMASQ_HOSTS = '/home/fahad/dns/hosts';
+const ZONES_DIR = appConfig.dns.zonesDir;
+const DNS_CONFIG_DIR = appConfig.dns.configDir;
+const DNSMASQ_CONF = appConfig.dns.dnsmasqConf;
+const DNSMASQ_HOSTS = appConfig.dns.dnsmasqHosts;
 
 export interface DnsZone {
   domain: string;
@@ -59,7 +60,7 @@ export class DnsEngine {
     const serial = Math.floor(Date.now() / 1000);
     const ns1 = 'ns1.fahadcloud.com';
     const ns2 = 'ns2.fahadcloud.com';
-    const serverIp = process.env.SERVER_IP || '52.201.210.162';
+    const serverIp = appConfig.serverIp;
 
     let zoneFile = `$ORIGIN ${domain}.\n`;
     zoneFile += `$TTL 3600\n`;
@@ -128,7 +129,7 @@ export class DnsEngine {
   // ============ NEW: Actually serve DNS records via dnsmasq ============
 
   private updateDnsmasqHosts(domain: string, records: DnsZoneRecord[]): boolean {
-    const serverIp = process.env.SERVER_IP || '52.201.210.162';
+    const serverIp = appConfig.serverIp;
 
     try {
       // Build hosts file entries

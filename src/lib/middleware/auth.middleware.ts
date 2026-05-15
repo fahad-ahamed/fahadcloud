@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { verifyToken } from '@/lib/auth';
 import { db } from '@/lib/db';
+import { appConfig } from '@/lib/config/app.config';
 
 export interface AuthResult {
   authenticated: boolean;
@@ -50,7 +51,7 @@ export async function requireSuperAdmin(request: NextRequest): Promise<AuthResul
     select: { email: true, adminRole: true },
   });
   if (!user) return { authenticated: false, error: 'User not found', status: 401 };
-  if (user.email !== 'admin@fahadcloud.com' && user.adminRole !== 'super_admin') {
+  if (user.email !== appConfig.admin.superAdminEmail && user.adminRole !== 'super_admin') {
     return { authenticated: false, error: 'Super admin access required', status: 403 };
   }
   return authResult;

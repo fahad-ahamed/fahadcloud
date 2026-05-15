@@ -1,11 +1,11 @@
 // ============ REAL AI AUTO LEARNING AGENT v3.0 ============
 // Uses local AI engine for learning, research, and knowledge graph building
 
-import { PrismaClient } from '@prisma/client';
+import { db } from '@/lib/db';
 import { AgentId, generateId } from '../types';
 import { aiChat, aiResearch } from '../ai-engine';
 
-const prisma = new PrismaClient();
+
 
 // ============ TYPES ============
 
@@ -126,21 +126,21 @@ export class AutoLearningEngine {
   private async collectTrainingData(): Promise<string> {
     const data: string[] = [];
     try {
-      const taskStats = await prisma.agentTask.groupBy({
+      const taskStats = await db.agentTask.groupBy({
         by: ['status'],
         _count: { status: true },
       });
       data.push(`Task outcomes: ${taskStats.map(s => `${s.status}: ${s._count.status}`).join(', ')}`);
 
-      const recentExecutions = await prisma.agentToolExecution.findMany({
+      const recentExecutions = await db.agentToolExecution.findMany({
         orderBy: { createdAt: 'desc' },
         take: 20,
       });
       data.push(`Recent executions: ${recentExecutions.map(e => `${e.tool}(${e.status})`).join(', ')}`);
 
-      const userCount = await prisma.user.count();
-      const domainCount = await prisma.domain.count();
-      const hostingCount = await prisma.hostingEnvironment.count();
+      const userCount = await db.user.count();
+      const domainCount = await db.domain.count();
+      const hostingCount = await db.hostingEnvironment.count();
       data.push(`System: ${userCount} users, ${domainCount} domains, ${hostingCount} hosting environments`);
     } catch {}
     return data.join('\n');
@@ -210,7 +210,7 @@ export class AutoLearningEngine {
 
   private async persistLearningResults(insights: number, patterns: number, models: number): Promise<void> {
     try {
-      await prisma.agentMemory.create({
+      await db.agentMemory.create({
         data: {
           userId: 'system',
           type: 'agent_learning',
@@ -247,7 +247,7 @@ export class AutoLearningEngine {
 
     // Store in database
     try {
-      await prisma.agentMemory.create({
+      await db.agentMemory.create({
         data: {
           userId: 'system',
           type: 'agent_learning',

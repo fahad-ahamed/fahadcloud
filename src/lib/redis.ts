@@ -17,6 +17,32 @@ export const redis = globalForRedis.redis ?? new Redis(REDIS_URL, {
 
 if (process.env.NODE_ENV !== 'production') globalForRedis.redis = redis;
 
+// ============ SCAN-BASED KEY RETRIEVAL (safe for production) ============
+async function scanKeys(pattern: string, count: number = 100): Promise<string[]> {
+  const keys: string[] = [];
+  let cursor = '0';
+  do {
+    const [nextCursor, batch] = await redis.scan(cursor, 'MATCH', pattern, 'COUNT', count);
+    cursor = nextCursor;
+    keys.push(...batch);
+  } while (cursor !== '0');
+  return keys;
+}
+
+async function scanDel(pattern: string): Promise<number> {
+  let deleted = 0;
+  let cursor = '0';
+  do {
+    const [nextCursor, batch] = await redis.scan(cursor, 'MATCH', pattern, 'COUNT', 100);
+    cursor = nextCursor;
+    if (batch.length > 0) {
+      await redis.del(...batch);
+      deleted += batch.length;
+    }
+  } while (cursor !== '0');
+  return deleted;
+}
+
 // ============ CACHE LAYER ============
 export class CacheLayer {
   private prefix = 'fc:cache:';
@@ -40,10 +66,7 @@ export class CacheLayer {
   }
 
   async deletePattern(pattern: string): Promise<void> {
-    const keys = await redis.keys(this.prefix + pattern);
-    if (keys.length > 0) {
-      await redis.del(...keys);
-    }
+    await scanDel(this.prefix + pattern);
   }
 
   async getOrSet<T>(key: string, fetcher: () => Promise<T>, ttlSeconds: number = 3600): Promise<T> {
@@ -146,7 +169,7 @@ export class AITempMemory {
   }
 
   async getAll(userId: string): Promise<Record<string, any>> {
-    const keys = await redis.keys(this.prefix + userId + ':*');
+    const keys = await scanKeys(this.prefix + userId + ':*');
     const result: Record<string, any> = {};
     for (const k of keys) {
       const data = await redis.get(k);
@@ -157,8 +180,7 @@ export class AITempMemory {
   }
 
   async clear(userId: string): Promise<void> {
-    const keys = await redis.keys(this.prefix + userId + ':*');
-    if (keys.length > 0) await redis.del(...keys);
+    await scanDel(this.prefix + userId + ':*');
   }
 }
 

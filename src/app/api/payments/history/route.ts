@@ -15,7 +15,7 @@ export async function GET(request: NextRequest) {
     const result = await paymentRepository.findByUserId(auth.user!.userId, { status, page, limit });
 
     return NextResponse.json({
-      payments: result.items.map(p => ({
+      payments: result.items.map((p: any) => ({
         id: p.id,
         orderId: p.orderId,
         amount: p.amount,

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSecurityEngine } from '@/lib/agent/security';
+import { appConfig } from '@/lib/config/app.config';
 
 // GET /api/agent/security - Get security status
 export async function GET(request: NextRequest) {
@@ -42,7 +43,7 @@ export async function POST(request: NextRequest) {
 
     switch (action) {
       case 'malware_scan': {
-        const result = await security.scanForMalware(path || '/home/fahad/fahadcloud');
+        const result = await security.scanForMalware(path || appConfig.projectRoot);
         return NextResponse.json(result);
       }
       case 'anomaly_detection': {

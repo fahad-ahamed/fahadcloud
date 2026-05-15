@@ -2,9 +2,10 @@
 // Continuous Scanner + Auto Fix Engine
 // Detects broken APIs, missing imports, dead code, memory leaks, security vulnerabilities
 
-import { PrismaClient } from '@prisma/client';
+import { db } from '@/lib/db';
 import { AgentId, generateId } from '../types';
 import { aiChat } from '../ai-engine';
+import { appConfig } from '@/lib/config/app.config';
 
 
 // Local types (not exported from ai-engine)
@@ -32,7 +33,7 @@ interface CodeReviewResult {
   securityConcerns: any[];
 }
 
-const prisma = new PrismaClient();
+
 
 // ============ BUG DETECTOR ENGINE ============
 
@@ -71,7 +72,7 @@ export class BugDetectorEngine {
 
   // ============ CONTINUOUS SCANNER ============
 
-  async runQuickScan(projectPath: string = '/home/fahad/fahadcloud'): Promise<ScanResult> {
+  async runQuickScan(projectPath: string = appConfig.projectRoot): Promise<ScanResult> {
     const scanId = generateId('scan');
     const result: ScanResult = {
       id: scanId,
@@ -111,7 +112,7 @@ export class BugDetectorEngine {
     return result;
   }
 
-  async runFullScan(projectPath: string = '/home/fahad/fahadcloud'): Promise<ScanResult> {
+  async runFullScan(projectPath: string = appConfig.projectRoot): Promise<ScanResult> {
     const scanId = generateId('scan');
     const result: ScanResult = {
       id: scanId,
@@ -170,7 +171,7 @@ export class BugDetectorEngine {
 
     // Store scan result in database
     try {
-      await prisma.agentMemory.create({
+      await db.agentMemory.create({
         data: {
           userId: 'system',
           type: 'agent_learning',
@@ -479,7 +480,7 @@ export class BugDetectorEngine {
 
   async autoFix(
     bugId: string,
-    projectPath: string = '/home/fahad/fahadcloud'
+    projectPath: string = appConfig.projectRoot
   ): Promise<FixResult> {
     const fixId = generateId('fix');
     

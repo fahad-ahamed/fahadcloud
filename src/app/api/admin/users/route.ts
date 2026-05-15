@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { userRepository, adminLogRepository } from '@/lib/repositories';
 import { requireAdmin, requireSuperAdmin, getClientIp, authErrorResponse } from '@/lib/middleware';
+import { appConfig } from '@/lib/config/app.config';
 
 export async function GET(request: NextRequest) {
   try {
@@ -17,7 +18,7 @@ export async function GET(request: NextRequest) {
     const result = await userRepository.searchUsers({ search, role, status, page, limit });
 
     return NextResponse.json({
-      users: result.items.map(u => ({
+      users: result.items.map((u: any) => ({
         id: u.id,
         email: u.email,
         firstName: u.firstName,
@@ -71,7 +72,7 @@ export async function PUT(request: NextRequest) {
     }
 
     // Prevent modifying the super admin
-    if (targetUser.email === 'admin@fahadcloud.com' && auth.user!.email !== 'admin@fahadcloud.com') {
+    if (targetUser.email === appConfig.admin.superAdminEmail && auth.user!.email !== appConfig.admin.superAdminEmail) {
       return NextResponse.json({ error: 'Cannot modify the super admin account' }, { status: 403 });
     }
 
@@ -209,7 +210,7 @@ export async function DELETE(request: NextRequest) {
     }
 
     // Prevent deleting the super admin
-    if (targetUser.email === 'admin@fahadcloud.com') {
+    if (targetUser.email === appConfig.admin.superAdminEmail) {
       return NextResponse.json({ error: 'Cannot delete the super admin account' }, { status: 403 });
     }
 

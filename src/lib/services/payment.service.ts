@@ -2,6 +2,7 @@ import { db } from '@/lib/db';
 import { paymentRepository, orderRepository, adminLogRepository, domainRepository } from '@/lib/repositories';
 import { checkRateLimit } from '@/lib/rateLimit';
 import { validateTrxIdFormat, validateBkashNumber, verifyBkashPayment, usdToBdt } from '@/lib/bkash';
+import { appConfig } from '@/lib/config/app.config';
 
 export class PaymentService {
   async createPayment(userId: string, data: { orderId: string; trxId: string; senderNumber?: string }, ip: string, userAgent?: string) {
@@ -113,7 +114,7 @@ export class PaymentService {
       try {
         const domain = await db.domain.findFirst({ where: { name: paymentRecord.order.domainName, userId: paymentRecord.order.userId } });
         if (domain) {
-          await db.hostingEnvironment.create({ data: { userId: paymentRecord.order.userId, domainId: domain.id, planSlug: paymentRecord.order.hostingPlanSlug, status: 'active', rootPath: `/home/fahad/hosting/users/${paymentRecord.order.userId}/${domain.name}`, serverType: 'static', sslEnabled: false, storageUsed: 0, storageLimit: 5368709120 } });
+          await db.hostingEnvironment.create({ data: { userId: paymentRecord.order.userId, domainId: domain.id, planSlug: paymentRecord.order.hostingPlanSlug, status: 'active', rootPath: `${appConfig.hosting.usersDir}/${paymentRecord.order.userId}/${domain.name}`, serverType: 'static', sslEnabled: false, storageUsed: 0, storageLimit: 5368709120 } });
         }
       } catch {}
     }

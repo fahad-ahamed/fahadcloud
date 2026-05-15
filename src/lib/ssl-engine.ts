@@ -5,7 +5,9 @@ import { execSync } from 'child_process';
 import { existsSync, mkdirSync, readFileSync } from 'fs';
 import path from 'path';
 
-const SSL_BASE_DIR = '/home/fahad/hosting/ssl';
+import { appConfig } from '@/lib/config/app.config';
+
+const SSL_BASE_DIR = appConfig.hosting.sslDir;
 
 export interface SslCertificate {
   domain: string;
@@ -22,7 +24,7 @@ export class SslEngine {
   }
 
   // Issue a Let's Encrypt certificate
-  async issueLetsEncrypt(domain: string, email: string = 'admin@fahadcloud.com'): Promise<{ success: boolean; error?: string; certPath?: string }> {
+  async issueLetsEncrypt(domain: string, email: string = appConfig.admin.superAdminEmail): Promise<{ success: boolean; error?: string; certPath?: string }> {
     try {
       const certDir = path.join(SSL_BASE_DIR, domain);
       mkdirSync(certDir, { recursive: true });

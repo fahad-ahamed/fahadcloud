@@ -2,7 +2,7 @@
 // Real AI predictive analysis instead of hardcoded thresholds
 // Reinforcement learning, predictive analysis, workflow evolution
 
-import { PrismaClient } from '@prisma/client';
+import { db } from '@/lib/db';
 import { AgentId, LearningRecord, Prediction, generateId } from '../types';
 import { aiChat } from '../ai-engine';
 
@@ -25,7 +25,7 @@ interface LearningResult {
   confidence: number;
 }
 
-const prisma = new PrismaClient();
+
 
 // ============ LEARNING ENGINE ============
 
@@ -58,7 +58,7 @@ export class LearningEngine {
     this.learningHistory.get(agentId)!.push(record);
 
     try {
-      await prisma.agentMemory.create({
+      await db.agentMemory.create({
         data: {
           userId: 'system',
           type: 'agent_learning',
@@ -113,7 +113,7 @@ export class LearningEngine {
     const events: { type: string; timestamp: string; details?: string }[] = [];
 
     try {
-      const failedTasks = await prisma.agentTask.findMany({
+      const failedTasks = await db.agentTask.findMany({
         where: { status: 'failed', createdAt: { gte: new Date(Date.now() - 86400000) } },
         take: 10,
         orderBy: { createdAt: 'desc' },
@@ -127,7 +127,7 @@ export class LearningEngine {
         });
       }
 
-      const recentDeploys = await prisma.deploymentLog.findMany({
+      const recentDeploys = await db.deploymentLog.findMany({
         where: { userId, createdAt: { gte: new Date(Date.now() - 86400000) } },
         take: 5,
         orderBy: { createdAt: 'desc' },
@@ -149,7 +149,7 @@ export class LearningEngine {
 
   async crossProjectInsights(userId: string): Promise<any[]> {
     try {
-      const domains = await prisma.domain.findMany({ where: { userId }, include: { hostingEnv: true } });
+      const domains = await db.domain.findMany({ where: { userId }, include: { hostingEnv: true } });
       const insights: any[] = [];
 
       for (const domain of domains) {
@@ -206,8 +206,8 @@ export class LearningEngine {
 
   private async getUserContext(userId: string) {
     const [domains, hostingEnvs] = await Promise.all([
-      prisma.domain.findMany({ where: { userId } }),
-      prisma.hostingEnvironment.findMany({ where: { userId } }),
+      db.domain.findMany({ where: { userId } }),
+      db.hostingEnvironment.findMany({ where: { userId } }),
     ]);
     return { domains, hostingEnvs };
   }

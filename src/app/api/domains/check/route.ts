@@ -31,7 +31,7 @@ async function findRdapServer(tld: string): Promise<string | null> {
     for (const serviceTld of service.tld) {
       if (serviceTld.toLowerCase() === tld.toLowerCase() || 
           tld.toLowerCase().endsWith('.' + serviceTld.toLowerCase())) {
-        return service.urls[0];
+        return service.urls[0] ?? null;
       }
     }
   }
@@ -100,7 +100,7 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const sld = parts[0];
+    const sld = parts[0]!;
     const tld = parts.slice(1).join('.');
 
     if (!domainRegex.test(sld) || sld.length < 1 || sld.length > 63) {

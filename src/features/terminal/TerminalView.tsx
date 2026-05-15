@@ -35,7 +35,7 @@ export default function TerminalView({
   // Track command history for up/down arrow navigation
   useEffect(() => {
     if (termHistory.length > 0) {
-      const lastCmd = termHistory[termHistory.length - 1].cmd;
+      const lastCmd = termHistory[termHistory.length - 1]!.cmd;
       if (lastCmd && (commandHistory.length === 0 || commandHistory[commandHistory.length - 1] !== lastCmd)) {
         setCommandHistory(prev => [...prev, lastCmd]);
       }
@@ -58,14 +58,14 @@ export default function TerminalView({
       if (commandHistory.length > 0) {
         const newIndex = historyIndex < commandHistory.length - 1 ? historyIndex + 1 : historyIndex;
         setHistoryIndex(newIndex);
-        setTermInput(commandHistory[commandHistory.length - 1 - newIndex]);
+        setTermInput(commandHistory[commandHistory.length - 1 - newIndex] ?? '');
       }
     } else if (e.key === 'ArrowDown') {
       e.preventDefault();
       if (historyIndex > 0) {
         const newIndex = historyIndex - 1;
         setHistoryIndex(newIndex);
-        setTermInput(commandHistory[commandHistory.length - 1 - newIndex]);
+        setTermInput(commandHistory[commandHistory.length - 1 - newIndex] ?? '');
       } else {
         setHistoryIndex(-1);
         setTermInput('');

@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { PrismaClient } from '@prisma/client';
+import { db } from '@/lib/db';
 import { validateShellCommand, getSandboxEnv, getSandboxCwd } from '@/lib/shell-sandbox';
 
-const prisma = new PrismaClient();
+
 
 export async function POST(request: NextRequest) {
   try {
@@ -25,13 +25,13 @@ export async function POST(request: NextRequest) {
     const validation = validateShellCommand(command);
     
     if (!validation.safe) {
-      await prisma.agentToolExecution.create({
+      await db.agentToolExecution.create({
         data: { userId, sessionId, tool: 'shell_execute', input: JSON.stringify({ command }), status: 'denied', riskLevel: validation.riskLevel },
       }).catch(() => {});
       return NextResponse.json({ error: 'Command rejected for security reasons', reason: validation.reason, riskLevel: validation.riskLevel }, { status: 403 });
     }
 
-    const recentExecutions = await prisma.agentToolExecution.count({
+    const recentExecutions = await db.agentToolExecution.count({
       where: { userId, tool: 'shell_execute', createdAt: { gte: new Date(Date.now() - 60000) } },
     });
     if (recentExecutions >= 10) {
@@ -71,7 +71,7 @@ export async function POST(request: NextRequest) {
 
     const duration = Date.now() - startTime;
 
-    await prisma.agentToolExecution.create({
+    await db.agentToolExecution.create({
       data: {
         userId, sessionId, tool: 'shell_execute',
         input: JSON.stringify({ command }),

@@ -377,6 +377,7 @@ export default function LandingPage({
         adminOtpLoading={adminOtpLoading}
         adminVerifyLoading={adminVerifyLoading}
         adminError={adminError}
+        setAdminError={setAdminError}
         onRequestOtp={onAdminRequestOtp}
         onVerifyOtp={onAdminVerifyOtp}
         onAdminPasswordLogin={onAdminPasswordLogin}

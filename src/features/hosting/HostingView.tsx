@@ -307,10 +307,10 @@ function generateMockDeployments(envId: string): Deployment[] {
     return {
       id: `deploy-${envId}-${i}`,
       envId,
-      commit: commits[i],
-      branch: branches[i],
+      commit: commits[i] ?? 'unknown',
+      branch: branches[i] ?? 'main',
       status,
-      message: messages[i],
+      message: messages[i] ?? 'Deployment',
       createdAt: date.toISOString(),
       finishedAt: status === 'ready' || status === 'failed'
         ? new Date(date.getTime() + 120000).toISOString()

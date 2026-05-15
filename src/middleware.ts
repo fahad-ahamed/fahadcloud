@@ -45,6 +45,10 @@ if (typeof setInterval !== "undefined") {
   }, 5 * 60 * 1000);
 }
 
+const ALLOWED_ORIGINS = (process.env.ALLOWED_ORIGINS || '').split(',').filter(Boolean);
+const MAX_GENERAL_PAYLOAD = 10 * 1024 * 1024; // 10MB
+const MAX_UPLOAD_PAYLOAD = 50 * 1024 * 1024; // 50MB
+
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
   const ip = request.headers.get("x-forwarded-for")?.split(",")[0].trim() 
@@ -65,10 +69,42 @@ export function middleware(request: NextRequest) {
     return new NextResponse(null, { status: 404 });
   }
 
-  // API rate limiting
+  // API route handling: CORS + rate limiting + request size
   if (pathname.startsWith("/api/")) {
     if (pathname === "/api/health" || pathname === "/api/status") {
       return response;
+    }
+
+    // CORS headers for API routes
+    const origin = request.headers.get("origin");
+    if (origin) {
+      // In production, only allow configured origins
+      const allowOrigin = ALLOWED_ORIGINS.length > 0
+        ? (ALLOWED_ORIGINS.includes(origin) ? origin : ALLOWED_ORIGINS[0])
+        : origin; // Dev: reflect origin
+      response.headers.set("Access-Control-Allow-Origin", allowOrigin);
+      response.headers.set("Access-Control-Allow-Methods", "GET, POST, PUT, PATCH, DELETE, OPTIONS");
+      response.headers.set("Access-Control-Allow-Headers", "Content-Type, Authorization, X-Requested-With");
+      response.headers.set("Access-Control-Allow-Credentials", "true");
+      response.headers.set("Access-Control-Max-Age", "86400");
+    }
+
+    // Handle CORS preflight
+    if (request.method === "OPTIONS") {
+      return new NextResponse(null, { status: 204, headers: response.headers });
+    }
+
+    // Request size limit for API routes
+    const contentLength = parseInt(request.headers.get("content-length") || "0", 10);
+    if (contentLength > 0) {
+      const isUploadRoute = pathname.startsWith("/api/upload") || pathname.includes("/upload");
+      const maxAllowed = isUploadRoute ? MAX_UPLOAD_PAYLOAD : MAX_GENERAL_PAYLOAD;
+      if (contentLength > maxAllowed) {
+        return NextResponse.json(
+          { error: `Request too large. Maximum size is ${isUploadRoute ? '50MB' : '10MB'}.` },
+          { status: 413 }
+        );
+      }
     }
 
     const result = checkRateLimit(ip, pathname);

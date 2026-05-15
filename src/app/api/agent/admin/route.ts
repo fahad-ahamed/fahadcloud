@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { PrismaClient } from '@prisma/client';
+import { db } from '@/lib/db';
 import { getAIAdminStats, emergencyShutdown } from '@/lib/agent/core';
 
-const prisma = new PrismaClient();
+
 
 // GET /api/agent/admin - Admin stats and controls
 export async function GET(request: NextRequest) {
@@ -22,11 +22,11 @@ export async function GET(request: NextRequest) {
     const stats = await getAIAdminStats();
     
     // Get AI system config
-    const configs = await prisma.agentSystemConfig.findMany();
-    const securityPolicies = await prisma.agentSecurityPolicy.findMany({ where: { isActive: true } });
+    const configs = await db.agentSystemConfig.findMany();
+    const securityPolicies = await db.agentSecurityPolicy.findMany({ where: { isActive: true } });
 
     // Get recent suspicious activities
-    const suspiciousActivities = await prisma.agentToolExecution.findMany({
+    const suspiciousActivities = await db.agentToolExecution.findMany({
       where: { riskLevel: { in: ['high', 'critical'] } },
       orderBy: { createdAt: 'desc' },
       take: 20,
@@ -71,7 +71,7 @@ export async function POST(request: NextRequest) {
         if (!key || value === undefined) {
           return NextResponse.json({ error: 'key and value are required' }, { status: 400 });
         }
-        await prisma.agentSystemConfig.upsert({
+        await db.agentSystemConfig.upsert({
           where: { key },
           create: { key, value: JSON.stringify(value), updatedBy: payload.userId },
           update: { value: JSON.stringify(value), updatedBy: payload.userId },
@@ -81,16 +81,16 @@ export async function POST(request: NextRequest) {
       case 'clear_memory': {
         const { userId: targetUserId } = body;
         if (targetUserId) {
-          await prisma.agentMemory.deleteMany({ where: { userId: targetUserId } });
+          await db.agentMemory.deleteMany({ where: { userId: targetUserId } });
         } else {
-          await prisma.agentMemory.deleteMany({});
+          await db.agentMemory.deleteMany({});
         }
         return NextResponse.json({ success: true, message: 'AI memory cleared' });
       }
       case 'approve_task': {
         const { taskId } = body;
         if (!taskId) return NextResponse.json({ error: 'taskId required' }, { status: 400 });
-        const task = await prisma.agentTask.findUnique({ where: { id: taskId } });
+        const task = await db.agentTask.findUnique({ where: { id: taskId } });
         if (!task) return NextResponse.json({ error: 'Task not found' }, { status: 404 });
         const { executeApprovedTask } = await import('@/lib/agent/core');
         const result = await executeApprovedTask(taskId, payload.userId);

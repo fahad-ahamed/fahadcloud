@@ -6,6 +6,7 @@
 import nodemailer from 'nodemailer';
 import { readFileSync } from 'fs';
 import { join } from 'path';
+import { appConfig } from '@/lib/config/app.config';
 
 // ============ CONFIG LOADER ============
 
@@ -159,11 +160,7 @@ export async function sendEmail(options: SendEmailOptions): Promise<{ success: b
         'Precedence': 'bulk',
         'X-Entity-Ref-ID': `fc-${Date.now()}-${Math.random().toString(36).substr(2, 8)}`,
       },
-      dkim: {
-        domainName: 'fahadcloud.com',
-        keySelector: 'default',
-        privateKey: '',
-      },
+
     });
 
     console.log(`[SMTP] Email sent to ${options.to}, messageId: ${result.messageId}, response: ${result.response}`);
@@ -252,7 +249,7 @@ export async function sendOtpEmail(toEmail: string, otp: string): Promise<{ succ
         </div>
         <div class="footer">
           <p>FahadCloud AI-Powered Domain &amp; Hosting Platform</p>
-          <p>This is an automated message from <a href="http://52.201.210.162:3000">fahadcloud.com</a></p>
+          <p>This is an automated message from <a href="${appConfig.appUrl}">fahadcloud.com</a></p>
         </div>
       </div>
     </body>
@@ -297,7 +294,7 @@ export async function sendWelcomeEmail(toEmail: string, name: string): Promise<{
             You can now register domains, deploy websites, manage hosting, and use our AI Cloud Engineer to automate your infrastructure.
           </p>
           <div style="text-align: center; margin: 24px 0;">
-            <a href="http://52.201.210.162:3000" style="background: linear-gradient(135deg, #059669, #0d9488); color: white; padding: 14px 32px; border-radius: 10px; text-decoration: none; font-weight: 600; font-size: 15px;">Go to Dashboard</a>
+            <a href="${appConfig.appUrl}" style="background: linear-gradient(135deg, #059669, #0d9488); color: white; padding: 14px 32px; border-radius: 10px; text-decoration: none; font-weight: 600; font-size: 15px;">Go to Dashboard</a>
           </div>
         </div>
         <div class="footer">
@@ -358,7 +355,7 @@ export async function sendRegistrationOtpEmail(toEmail: string, otp: string, nam
         </div>
         <div class="footer">
           <p>FahadCloud AI-Powered Domain &amp; Hosting Platform</p>
-          <p>This is an automated message from <a href="http://52.201.210.162:3000">fahadcloud.com</a></p>
+          <p>This is an automated message from <a href="${appConfig.appUrl}">fahadcloud.com</a></p>
         </div>
       </div>
     </body>
@@ -431,7 +428,7 @@ export async function sendActionVerificationEmail(toEmail: string, otp: string, 
         </div>
         <div class="footer">
           <p>FahadCloud AI-Powered Domain &amp; Hosting Platform</p>
-          <p>This is an automated security message from <a href="http://52.201.210.162:3000">fahadcloud.com</a></p>
+          <p>This is an automated security message from <a href="${appConfig.appUrl}">fahadcloud.com</a></p>
         </div>
       </div>
     </body>
@@ -493,7 +490,7 @@ export async function sendPasswordResetEmail(toEmail: string, otp: string, name:
         </div>
         <div class="footer">
           <p>FahadCloud AI-Powered Domain &amp; Hosting Platform</p>
-          <p>This is an automated security message from <a href="http://52.201.210.162:3000">fahadcloud.com</a></p>
+          <p>This is an automated security message from <a href="${appConfig.appUrl}">fahadcloud.com</a></p>
         </div>
       </div>
     </body>

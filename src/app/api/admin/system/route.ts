@@ -5,7 +5,9 @@ import { execSync } from 'child_process';
 import fs from 'fs';
 import path from 'path';
 
-const PROJECT_ROOT = '/home/fahad/fahadcloud';
+import { appConfig } from '@/lib/config/app.config';
+
+const PROJECT_ROOT = appConfig.projectRoot;
 
 // GET /api/admin/system?action=status|logs|env|services|db-stats|pm2|disk
 export async function GET(request: NextRequest) {
@@ -78,7 +80,7 @@ export async function GET(request: NextRequest) {
           const [key, ...valueParts] = line.split('=');
           const value = valueParts.join('=');
           const sensitiveKeys = ['PASSWORD', 'SECRET', 'KEY', 'TOKEN', 'SMTP_PASS', 'BKASH'];
-          if (sensitiveKeys.some(k => key.toUpperCase().includes(k))) {
+          if (sensitiveKeys.some(k => key!.toUpperCase().includes(k))) {
             return `${key}=****`;
           }
           return line;
@@ -152,9 +154,9 @@ export async function POST(request: NextRequest) {
     if (action === 'rebuild_app') {
       try {
         // Run build in background
-        execSync('cd /home/fahad/fahadcloud && npm run build 2>&1', { timeout: 120000 });
-        execSync('cd /home/fahad/fahadcloud && cp -r .next/static .next/standalone/.next/static && cp -r public .next/standalone/public 2>&1', { timeout: 30000 });
-        execSync('cd /home/fahad/fahadcloud && mkdir -p .next/standalone/db && cp db/fahadcloud.db .next/standalone/db/ && cp -r prisma .next/standalone/ && cp -r node_modules/.prisma .next/standalone/node_modules/ 2>&1', { timeout: 30000 });
+        execSync(`cd ${appConfig.projectRoot} && npm run build 2>&1`, { timeout: 120000 });
+        execSync(`cd ${appConfig.projectRoot} && cp -r .next/static .next/standalone/.next/static && cp -r public .next/standalone/public 2>&1`, { timeout: 30000 });
+        execSync(`cd ${appConfig.projectRoot} && mkdir -p .next/standalone/db && cp db/fahadcloud.db .next/standalone/db/ && cp -r prisma .next/standalone/ && cp -r node_modules/.prisma .next/standalone/node_modules/ 2>&1`, { timeout: 30000 });
         execSync('pm2 restart fahadcloud 2>&1', { timeout: 15000 });
         await adminLogRepository.logAction({ adminId: auth.user!.userId, action: 'system_rebuild', targetType: 'system', targetId: 'fahadcloud', ipAddress: ip });
         return NextResponse.json({ message: 'Application rebuilt and restarted successfully' });
@@ -188,7 +190,7 @@ export async function POST(request: NextRequest) {
 
     if (action === 'git_pull') {
       try {
-        const result = execSync('cd /home/fahad/fahadcloud && git pull 2>&1', { timeout: 30000, encoding: 'utf-8' });
+        const result = execSync(`cd ${appConfig.projectRoot} && git pull 2>&1`, { timeout: 30000, encoding: 'utf-8' });
         await adminLogRepository.logAction({ adminId: auth.user!.userId, action: 'system_git_pull', targetType: 'system', targetId: 'git', ipAddress: ip });
         return NextResponse.json({ message: 'Git pull completed', output: result.substring(0, 2000) });
       } catch (e: any) {
@@ -198,7 +200,7 @@ export async function POST(request: NextRequest) {
 
     if (action === 'npm_install') {
       try {
-        const result = execSync('cd /home/fahad/fahadcloud && npm install 2>&1', { timeout: 120000, encoding: 'utf-8' });
+        const result = execSync(`cd ${appConfig.projectRoot} && npm install 2>&1`, { timeout: 120000, encoding: 'utf-8' });
         await adminLogRepository.logAction({ adminId: auth.user!.userId, action: 'system_npm_install', targetType: 'system', targetId: 'npm', ipAddress: ip });
         return NextResponse.json({ message: 'NPM install completed', output: result.substring(0, 2000) });
       } catch (e: any) {
@@ -208,7 +210,7 @@ export async function POST(request: NextRequest) {
 
     if (action === 'db_migrate') {
       try {
-        const result = execSync('cd /home/fahad/fahadcloud && npx prisma db push --accept-data-loss 2>&1', { timeout: 60000, encoding: 'utf-8' });
+        const result = execSync(`cd ${appConfig.projectRoot} && npx prisma db push --accept-data-loss 2>&1`, { timeout: 60000, encoding: 'utf-8' });
         await adminLogRepository.logAction({ adminId: auth.user!.userId, action: 'system_db_migrate', targetType: 'system', targetId: 'prisma', ipAddress: ip });
         return NextResponse.json({ message: 'Database migration completed', output: result.substring(0, 2000) });
       } catch (e: any) {
@@ -218,7 +220,7 @@ export async function POST(request: NextRequest) {
 
     if (action === 'clean_cache') {
       try {
-        execSync('rm -rf /home/fahad/fahadcloud/.next/cache 2>&1', { timeout: 5000 });
+        execSync(`rm -rf ${appConfig.projectRoot}/.next/cache 2>&1`, { timeout: 5000 });
         await adminLogRepository.logAction({ adminId: auth.user!.userId, action: 'system_cache_cleared', targetType: 'system', targetId: 'cache', ipAddress: ip });
         return NextResponse.json({ message: 'Cache cleaned successfully' });
       } catch (e: any) {
@@ -236,7 +238,7 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ error: `Command not allowed: ${baseCmd}` }, { status: 400 });
       }
       try {
-        const result = execSync(`cd /home/fahad/fahadcloud && ${command} 2>&1`, { timeout: 30000, encoding: 'utf-8', maxBuffer: 1024 * 1024 });
+        const result = execSync(`cd ${appConfig.projectRoot} && ${command} 2>&1`, { timeout: 30000, encoding: 'utf-8', maxBuffer: 1024 * 1024 });
         await adminLogRepository.logAction({ adminId: auth.user!.userId, action: 'system_command', targetType: 'system', targetId: 'command', details: JSON.stringify({ command }), ipAddress: ip });
         return NextResponse.json({ output: result.substring(0, 20000), command });
       } catch (e: any) {

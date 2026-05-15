@@ -3,14 +3,15 @@
 // Docker/K8s orchestration, server cluster management,
 // networking, IaC generation, and environment replication
 
-import { PrismaClient } from '@prisma/client';
+import { db } from '@/lib/db';
 import { AgentId, generateId } from '../types';
+import { appConfig } from '@/lib/config/app.config';
 
 // Local types
 interface ContainerSpec { name: string; image: string; ports: number[]; env: Record<string, string>; cpu: string; memory: string; volumes?: string[]; }
 interface ClusterNode { id: string; name: string; status: string; cpu: number; memory: number; ram?: number; disk?: number; containers: number; ip?: string; region?: string; }
 
-const prisma = new PrismaClient();
+
 
 // ============ INFRASTRUCTURE ENGINE ============
 
@@ -75,7 +76,7 @@ export class InfrastructureEngine {
       const primaryNode: ClusterNode = {
         id: 'node-primary',
         name: 'fahadcloud-primary',
-        ip: '52.201.210.162',
+        ip: appConfig.serverIp,
         status: sysInfo.cpu < 80 && sysInfo.ram < 80 ? 'healthy' : 'warning',
         cpu: sysInfo.cpu,
         ram: sysInfo.ram,
@@ -96,7 +97,7 @@ export class InfrastructureEngine {
   getNetworkConfig(): { interfaces: any[]; routes: any[]; dns: string[]; firewall: any } {
     return {
       interfaces: [
-        { name: 'eth0', ip: '52.201.210.162', status: 'up', type: 'public' },
+        { name: 'eth0', ip: appConfig.serverIp, status: 'up', type: 'public' },
         { name: 'lo', ip: '127.0.0.1', status: 'up', type: 'loopback' },
       ],
       routes: [{ destination: '0.0.0.0/0', gateway: 'default', interface: 'eth0' }],
@@ -194,7 +195,7 @@ After=network.target
 [Service]
 Type=simple
 User=fahad
-WorkingDirectory=/home/fahad/fahadcloud
+WorkingDirectory=${appConfig.projectRoot}
 ExecStart=/usr/bin/npm start
 Restart=always
 RestartSec=10
@@ -211,10 +212,10 @@ WantedBy=multi-user.target
 
   async replicateEnvironment(sourceEnvId: string, targetName: string): Promise<{ success: boolean; newEnvId?: string; error?: string }> {
     try {
-      const source = await prisma.hostingEnvironment.findUnique({ where: { id: sourceEnvId } });
+      const source = await db.hostingEnvironment.findUnique({ where: { id: sourceEnvId } });
       if (!source) return { success: false, error: 'Source environment not found' };
 
-      const newEnv = await prisma.hostingEnvironment.create({
+      const newEnv = await db.hostingEnvironment.create({
         data: {
           userId: source.userId,
           planSlug: source.planSlug,

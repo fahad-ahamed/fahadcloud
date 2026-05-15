@@ -1,9 +1,9 @@
 // ============ AI LEARNING API ============
 import { NextRequest, NextResponse } from 'next/server';
-import { PrismaClient } from '@prisma/client';
+import { db } from '@/lib/db';
 import { requireAuth, authErrorResponse } from '@/lib/middleware/auth.middleware';
 
-const prisma = new PrismaClient();
+
 
 // GET /api/agent/learning - List learning sessions with full details
 export async function GET(request: NextRequest) {
@@ -16,7 +16,7 @@ export async function GET(request: NextRequest) {
 
     if (sessionId) {
       // Get specific session with full details
-      const session = await prisma.learningSession.findUnique({
+      const session = await db.learningSession.findUnique({
         where: { id: sessionId },
         include: { 
           resources: { orderBy: { createdAt: 'desc' } },
@@ -30,7 +30,7 @@ export async function GET(request: NextRequest) {
     }
 
     // List all sessions
-    const sessions = await prisma.learningSession.findMany({
+    const sessions = await db.learningSession.findMany({
       where: { userId: auth.user!.userId },
       include: { 
         resources: { take: 3, orderBy: { createdAt: 'desc' } },
@@ -60,7 +60,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Topic is required' }, { status: 400 });
     }
 
-    const session = await prisma.learningSession.create({
+    const session = await db.learningSession.create({
       data: {
         userId: auth.user!.userId,
         topic: topic.trim(),
@@ -84,7 +84,7 @@ export async function POST(request: NextRequest) {
 async function processLearningAsync(sessionId: string, userId: string, topic: string, depth: string) {
   try {
     // Update status to researching
-    await prisma.learningSession.update({
+    await db.learningSession.update({
       where: { id: sessionId },
       data: { status: 'researching' },
     });
@@ -102,13 +102,13 @@ async function processLearningAsync(sessionId: string, userId: string, topic: st
     const findings = result.findings || `Research on "${topic}" completed. The topic covers various aspects of ${topic.toLowerCase()}. Key areas include fundamentals, best practices, and practical applications.`;
 
     // Update status to analyzing
-    await prisma.learningSession.update({
+    await db.learningSession.update({
       where: { id: sessionId },
       data: { status: 'analyzing' },
     });
 
     // Store as knowledge entry
-    const knowledgeEntry = await prisma.knowledgeEntry.create({
+    const knowledgeEntry = await db.knowledgeEntry.create({
       data: {
         userId,
         domain: 'ai_learning',
@@ -137,7 +137,7 @@ async function processLearningAsync(sessionId: string, userId: string, topic: st
     let totalInsights = 0;
     for (const section of sections) {
       const headerMatch = section.match(/^##\s*(.+?)(?:\n|$)/);
-      const header = headerMatch ? headerMatch[1].toLowerCase().trim() : 'general';
+      const header = headerMatch ? headerMatch[1]!.toLowerCase().trim() : 'general';
       const category = Object.entries(insightCategoryMap).find(([k]) => header.includes(k))?.[1] || 'concept';
       
       const lines = section.split('\n').filter((l: string) => l.trim().startsWith('-') || l.trim().startsWith('*') || l.trim().startsWith('•') || /^\d+\./.test(l.trim()));
@@ -145,7 +145,7 @@ async function processLearningAsync(sessionId: string, userId: string, topic: st
       for (const line of lines.slice(0, 5)) {
         const cleanedLine = line.replace(/^[-*•]\s*|^\d+\.\s*/, '').trim();
         if (cleanedLine.length > 10) {
-          await prisma.learningInsight.create({
+          await db.learningInsight.create({
             data: {
               sessionId,
               insight: cleanedLine,
@@ -159,7 +159,7 @@ async function processLearningAsync(sessionId: string, userId: string, topic: st
     }
 
     // Also create a resource entry for the research
-    await prisma.learningResource.create({
+    await db.learningResource.create({
       data: {
         sessionId,
         url: null,
@@ -172,7 +172,7 @@ async function processLearningAsync(sessionId: string, userId: string, topic: st
     }).catch(() => {});
 
     // Update session as completed with FULL findings
-    await prisma.learningSession.update({
+    await db.learningSession.update({
       where: { id: sessionId },
       data: {
         status: 'completed',
@@ -184,7 +184,7 @@ async function processLearningAsync(sessionId: string, userId: string, topic: st
     });
   } catch (error: any) {
     console.error('Learning process error:', error);
-    await prisma.learningSession.update({
+    await db.learningSession.update({
       where: { id: sessionId },
       data: { status: 'failed', error: error.message, completedAt: new Date() },
     }).catch(() => {});

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { PrismaClient } from '@prisma/client';
+import { db } from '@/lib/db';
 
-const prisma = new PrismaClient();
+
 
 // GET /api/agent/history - Get agent activity history
 export async function GET(request: NextRequest) {
@@ -22,7 +22,7 @@ export async function GET(request: NextRequest) {
     let result: any = {};
 
     if (type === 'all' || type === 'tasks') {
-      result.tasks = await prisma.agentTask.findMany({
+      result.tasks = await db.agentTask.findMany({
         where: { userId },
         orderBy: { createdAt: 'desc' },
         take: limit,
@@ -31,7 +31,7 @@ export async function GET(request: NextRequest) {
     }
 
     if (type === 'all' || type === 'executions') {
-      result.executions = await prisma.agentToolExecution.findMany({
+      result.executions = await db.agentToolExecution.findMany({
         where: { userId },
         orderBy: { createdAt: 'desc' },
         take: limit,
@@ -39,7 +39,7 @@ export async function GET(request: NextRequest) {
     }
 
     if (type === 'all' || type === 'sessions') {
-      result.sessions = await prisma.agentSession.findMany({
+      result.sessions = await db.agentSession.findMany({
         where: { userId },
         orderBy: { updatedAt: 'desc' },
         take: limit,
@@ -48,7 +48,7 @@ export async function GET(request: NextRequest) {
     }
 
     if (type === 'all' || type === 'deployments') {
-      result.deployments = await prisma.deploymentLog.findMany({
+      result.deployments = await db.deploymentLog.findMany({
         where: { userId },
         orderBy: { createdAt: 'desc' },
         take: limit,

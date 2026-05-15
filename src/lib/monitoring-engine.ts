@@ -2,6 +2,8 @@
 // Records metrics to database for historical analysis
 
 import { db } from '@/lib/db';
+import os from 'os';
+import { execSync } from 'child_process';
 
 export interface SystemMetrics {
   cpu: number;
@@ -37,7 +39,6 @@ export class MonitoringEngine {
   // Collect current system metrics
   collectMetrics(): SystemMetrics {
     try {
-      const os = require('os');
       const cpus = os.cpus();
       const totalMem = os.totalmem();
       const freeMem = os.freemem();
@@ -46,24 +47,21 @@ export class MonitoringEngine {
 
       let disk = 0;
       try {
-        const { execSync } = require('child_process');
         const output = execSync("df -h / | tail -1 | awk '{print $5}' | tr -d '%'", { encoding: 'utf-8' });
         disk = parseInt(output.trim()) || 0;
       } catch {}
 
       let dockerContainers = 0;
       try {
-        const { execSync } = require('child_process');
         const output = execSync('docker ps -q | wc -l', { encoding: 'utf-8', timeout: 5000 });
         dockerContainers = parseInt(output.trim()) || 0;
       } catch {}
 
       let activeConnections = 0;
       try {
-        const { execSync } = require('child_process');
         const output = execSync('ss -s | grep estab | head -1', { encoding: 'utf-8', timeout: 5000 });
         const match = output.match(/(\d+)/);
-        activeConnections = match ? parseInt(match[1]) : 0;
+        activeConnections = match && match[1] ? parseInt(match[1]) : 0;
       } catch {}
 
       const uptimeSecs = os.uptime();
@@ -73,7 +71,7 @@ export class MonitoringEngine {
       const uptime = days > 0 ? `${days}d ${hours}h ${minutes}m` : hours > 0 ? `${hours}h ${minutes}m` : `${minutes}m`;
 
       return {
-        cpu: Math.round(loadAvg[0] / cpus.length * 100),
+        cpu: Math.round((loadAvg[0] ?? 0) / cpus.length * 100),
         cpuCores: cpus.length,
         ram: Math.round(usedMem / totalMem * 100),
         ramTotal: Math.round(totalMem / 1024 / 1024),

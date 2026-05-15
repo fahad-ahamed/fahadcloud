@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAuth, requireAdmin } from "@/lib/middleware";
+import { db } from '@/lib/db';
 
 export const dynamic = "force-dynamic";
 
@@ -15,23 +16,19 @@ export async function GET(request: NextRequest) {
     const limit = parseInt(searchParams.get("limit") || "50");
     const type = searchParams.get("type");
 
-    const { PrismaClient } = await import("@prisma/client");
-    const prisma = new PrismaClient();
-    
     const where: any = {};
     if (type) where.type = type;
 
     const [activities, total] = await Promise.all([
-      prisma.activityFeed.findMany({
+      db.activityFeed.findMany({
         where,
         orderBy: { createdAt: "desc" },
         skip: (page - 1) * limit,
         take: limit,
       }),
-      prisma.activityFeed.count({ where })
+      db.activityFeed.count({ where })
     ]);
 
-    await prisma.$disconnect();
     return NextResponse.json({ activities, total, pagination: { page, limit } });
   } catch (e: any) {
     return NextResponse.json({ error: e.message }, { status: 500 });
@@ -48,10 +45,7 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const { type, title, message, metadata, priority } = body;
 
-    const { PrismaClient } = await import("@prisma/client");
-    const prisma = new PrismaClient();
-    
-    const activity = await prisma.activityFeed.create({
+    const activity = await db.activityFeed.create({
       data: {
         userId: auth.user!.userId,
         type: type || "system",
@@ -62,7 +56,6 @@ export async function POST(request: NextRequest) {
       }
     });
 
-    await prisma.$disconnect();
     return NextResponse.json({ activity });
   } catch (e: any) {
     return NextResponse.json({ error: e.message }, { status: 500 });

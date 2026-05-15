@@ -4,12 +4,14 @@ import { adminLogRepository } from '@/lib/repositories';
 import path from 'path';
 import fs from 'fs';
 
-const PROJECT_ROOT = '/home/fahad/fahadcloud';
+import { appConfig } from '@/lib/config/app.config';
+
+const PROJECT_ROOT = appConfig.projectRoot;
 
 // Safety: directories that should NEVER be deleted or modified carelessly
 const PROTECTED_PATHS = [
-  '/home/fahad/fahadcloud/db/fahadcloud.db',
-  '/home/fahad/fahadcloud/db/fahadcloud.db-journal',
+  `${appConfig.projectRoot}/db/fahadcloud.db`,
+  `${appConfig.projectRoot}/db/fahadcloud.db-journal`,
 ];
 
 function safePath(inputPath: string): string {
@@ -251,7 +253,7 @@ export async function DELETE(request: NextRequest) {
     const ip = getClientIp(request);
 
     // Create backup before deleting
-    const backupDir = '/home/fahad/fahadcloud/.admin-backups';
+    const backupDir = `${appConfig.projectRoot}/.admin-backups`;
     fs.mkdirSync(backupDir, { recursive: true });
     const backupPath = path.join(backupDir, `${path.basename(resolvedPath)}.${Date.now()}.bak`);
     

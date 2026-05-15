@@ -1,6 +1,7 @@
 // ============ DATABASE SECURITY MODULE v2.0 ============
 import { db } from "./db";
 import { auditLogger } from "./audit-logger";
+import { appConfig } from "./config/app.config";
 import * as bcrypt from "bcryptjs";
 
 // ============ PASSWORD SECURITY ============
@@ -164,17 +165,18 @@ export class InputSecurity {
 
 // ============ BACKUP AUTOMATION ============
 export class BackupAutomation {
-  static async createBackup(type: string = "scheduled"): Promise<any> {
+  static async createBackup(type: string = "scheduled", tables?: string[]): Promise<any> {
     try {
-      const backupDir = "/home/fahad/fahadcloud/backups";
+      const backupDir = `${appConfig.projectRoot}/backups`;
       const { execSync } = require("child_process");
       const fs = require("fs");
       if (!fs.existsSync(backupDir)) fs.mkdirSync(backupDir, { recursive: true });
       const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
       const fileName = `backup-${type}-${timestamp}.sql`;
       const filePath = `${backupDir}/${fileName}`;
+      const tablesIncluded = tables ? JSON.stringify(tables) : "[]";
       const backup = await db.databaseBackup.create({
-        data: { type, status: "running", filePath, startedAt: new Date() },
+        data: { type, status: "running", filePath, tablesIncluded, startedAt: new Date() },
       });
       return { success: true, backupId: backup.id, fileName };
     } catch (error: any) {

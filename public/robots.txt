@@ -3,5 +3,4 @@ Allow: /
 Disallow: /api/
 Disallow: /admin
 
-Sitemap: https://52.201.210.162/sitemap.xml
-
+Sitemap: https://fahadcloud.com/sitemap.xml

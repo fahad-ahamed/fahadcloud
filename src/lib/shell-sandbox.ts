@@ -1,6 +1,8 @@
 // Shell Command Sandbox - Security Layer with Role-Based Access
 // Admin: Full server access | Users: Restricted to their own area only
 
+import { appConfig } from '@/lib/config/app.config';
+
 const ALLOWED_COMMANDS_USER = [
   // File operations (read-only)
   'ls', 'cat', 'head', 'tail', 'wc', 'find', 'file', 'stat', 'du', 'df',
@@ -207,7 +209,7 @@ export function getSandboxEnv(userId: string, isAdmin: boolean = false): Record<
   if (isAdmin) {
     // Admin gets full environment access
     return {
-      HOME: '/home/fahad',
+      HOME: appConfig.hosting.baseDir,
       PATH: '/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin',
       TERM: 'xterm-256color',
       LANG: 'en_US.UTF-8',
@@ -218,7 +220,7 @@ export function getSandboxEnv(userId: string, isAdmin: boolean = false): Record<
     };
   }
   
-  const homeDir = `/home/fahad/hosting/users/${userId}`;
+  const homeDir = `${appConfig.hosting.usersDir}/${userId}`;
   return {
     HOME: homeDir,
     PATH: '/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin',
@@ -233,9 +235,9 @@ export function getSandboxEnv(userId: string, isAdmin: boolean = false): Record<
 
 export function getSandboxCwd(userId: string, isAdmin: boolean = false): string {
   if (isAdmin) {
-    return '/home/fahad';
+    return appConfig.hosting.baseDir;
   }
-  return `/home/fahad/hosting/users/${userId}`;
+  return `${appConfig.hosting.usersDir}/${userId}`;
 }
 
 export function getAdminHelpText(): string {

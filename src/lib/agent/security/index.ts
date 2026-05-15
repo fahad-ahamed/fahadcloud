@@ -3,10 +3,10 @@
 // Intrusion detection, malware scanning, behavioral anomaly detection,
 // firewall optimization, exploit prevention, and secure sandbox execution
 
-import { PrismaClient } from '@prisma/client';
+import { db } from '@/lib/db';
 import { AgentId, SecurityEvent, SecurityPolicy, SecurityRule, generateId } from '../types';
 
-const prisma = new PrismaClient();
+
 
 // ============ THREAT DETECTION ENGINE ============
 
@@ -212,7 +212,7 @@ export class SecurityEngine {
 
     try {
       // Check for unusual number of API calls
-      const recentToolExecs = await prisma.agentToolExecution.count({
+      const recentToolExecs = await db.agentToolExecution.count({
         where: { userId, createdAt: { gte: new Date(Date.now() - 3600000) } },
       });
       if (recentToolExecs > 50) {
@@ -221,7 +221,7 @@ export class SecurityEngine {
       }
 
       // Check for shell execution patterns
-      const shellExecs = await prisma.agentToolExecution.findMany({
+      const shellExecs = await db.agentToolExecution.findMany({
         where: { userId, tool: 'shell_execute', createdAt: { gte: new Date(Date.now() - 3600000) } },
         take: 20,
       });
@@ -231,7 +231,7 @@ export class SecurityEngine {
       }
 
       // Check for failed operations
-      const failedOps = await prisma.agentTask.count({
+      const failedOps = await db.agentTask.count({
         where: { userId, status: 'failed', createdAt: { gte: new Date(Date.now() - 86400000) } },
       });
       if (failedOps > 5) {
@@ -240,7 +240,7 @@ export class SecurityEngine {
       }
 
       // Check for access to unusual resources
-      const highRiskExecs = await prisma.agentToolExecution.count({
+      const highRiskExecs = await db.agentToolExecution.count({
         where: { userId, riskLevel: { in: ['high', 'critical'] }, createdAt: { gte: new Date(Date.now() - 86400000) } },
       });
       if (highRiskExecs > 3) {

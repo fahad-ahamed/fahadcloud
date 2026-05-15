@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { Toaster } from "@/components/ui/sonner";
+import { appConfig } from "@/lib/config/app.config";
 
 const geistSans = Geist({ variable: "--font-geist-sans", subsets: ["latin"] });
 const geistMono = Geist_Mono({ variable: "--font-geist-mono", subsets: ["latin"] });
@@ -20,7 +21,7 @@ export const metadata: Metadata = {
   },
   description: "Register domains, deploy websites, manage hosting - all powered by your personal AI Cloud Engineer. Free domains, one-click deployment, real-time monitoring.",
   keywords: ["cloud hosting", "domain registration", "AI agent", "website deployment", "DNS management", "SSL certificates", "FahadCloud", "hosting Bangladesh"],
-  authors: [{ name: "FahadCloud", url: "https://52.201.210.162" }],
+  authors: [{ name: "FahadCloud", url: `https://${appConfig.serverIp}` }],
   creator: "FahadCloud",
   publisher: "FahadCloud",
   robots: {
@@ -31,7 +32,7 @@ export const metadata: Metadata = {
   openGraph: {
     type: "website",
     locale: "en_US",
-    url: "https://52.201.210.162",
+    url: `https://${appConfig.serverIp}`,
     siteName: "FahadCloud",
     title: "FahadCloud - AI-Powered Domain & Hosting Platform",
     description: "Register domains, deploy websites, manage hosting - all powered by your personal AI Cloud Engineer.",
@@ -42,7 +43,7 @@ export const metadata: Metadata = {
     description: "Register domains, deploy websites, manage hosting - all powered by your personal AI Cloud Engineer.",
   },
   icons: { icon: "/favicon.ico" },
-  metadataBase: new URL("https://52.201.210.162"),
+  metadataBase: new URL(`https://${appConfig.serverIp}`),
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

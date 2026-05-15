@@ -12,9 +12,32 @@ export const QUEUES = {
   NOTIFICATION: 'fc_notifications',
 } as const;
 
+// Robust REDIS_URL parsing for BullMQ connection
+function parseRedisUrl(url: string | undefined): { host: string; port: number; password?: string; username?: string } {
+  const defaultConfig = { host: '127.0.0.1', port: 6379 };
+
+  if (!url) return defaultConfig;
+
+  try {
+    const parsed = new URL(url);
+    return {
+      host: parsed.hostname || defaultConfig.host,
+      port: parsed.port ? parseInt(parsed.port, 10) : (parsed.protocol === 'rediss:' ? 6380 : 6379),
+      username: parsed.username || undefined,
+      password: parsed.password || undefined,
+    };
+  } catch {
+    return defaultConfig;
+  }
+}
+
+const redisConfig = parseRedisUrl(process.env.REDIS_URL);
+
 const connection = {
-  host: process.env.REDIS_URL?.replace('redis://', '').split(':')[0] || '127.0.0.1',
-  port: parseInt(process.env.REDIS_URL?.split(':').pop() || '6379'),
+  host: redisConfig.host,
+  port: redisConfig.port,
+  ...(redisConfig.password && { password: redisConfig.password }),
+  ...(redisConfig.username && { username: redisConfig.username }),
 };
 
 // Lazy queue creation to avoid module-level instantiation errors

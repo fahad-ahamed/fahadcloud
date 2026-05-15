@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { requireAdmin, requireSuperAdmin, getClientIp, authErrorResponse } from '@/lib/middleware';
 import { userRepository, adminLogRepository } from '@/lib/repositories';
+import { appConfig } from '@/lib/config/app.config';
 
 // POST /api/admin/user-action - Admin actions on user accounts
 export async function POST(request: NextRequest) {
@@ -22,7 +23,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Prevent modifying the super admin
-    if (targetUser.email === 'admin@fahadcloud.com' && auth.user!.email !== 'admin@fahadcloud.com') {
+    if (targetUser.email === appConfig.admin.superAdminEmail && auth.user!.email !== appConfig.admin.superAdminEmail) {
       return NextResponse.json({ error: 'Cannot modify the super admin account' }, { status: 403 });
     }
 

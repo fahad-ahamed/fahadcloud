@@ -4,6 +4,7 @@ import { db } from '@/lib/db';
 import { getCurrentUser } from '@/lib/auth';
 import { readdir, stat, unlink, rm } from 'fs/promises';
 import path from 'path';
+import { appConfig } from '@/lib/config/app.config';
 
 export async function GET(request: NextRequest) {
   try {
@@ -28,7 +29,7 @@ export async function GET(request: NextRequest) {
     });
 
     // Also try to list from actual filesystem
-    const baseDir = `/home/fahad/hosting/${currentUser.userId}`;
+    const baseDir = `${appConfig.hosting.baseDir}/${currentUser.userId}`;
     const listDir = path.join(baseDir, directory.replace(/\.\./g, ''));
     let fileSystemEntries: any[] = [];
 
@@ -111,7 +112,7 @@ export async function DELETE(request: NextRequest) {
 
     // Delete from filesystem
     if (fileEntry) {
-      const fullPath = `/home/fahad/hosting/${currentUser.userId}/${fileEntry.path}`;
+      const fullPath = `${appConfig.hosting.baseDir}/${currentUser.userId}/${fileEntry.path}`;
       try {
         if (fileEntry.isDirectory) {
           await rm(fullPath, { recursive: true, force: true });
@@ -133,7 +134,7 @@ export async function DELETE(request: NextRequest) {
     } else if (filePath) {
       // Delete directly from filesystem if not in DB
       const sanitizedPath = filePath.replace(/\.\./g, '');
-      const fullPath = `/home/fahad/hosting/${currentUser.userId}/${sanitizedPath}`;
+      const fullPath = `${appConfig.hosting.baseDir}/${currentUser.userId}/${sanitizedPath}`;
       try {
         const stats = await stat(fullPath);
         if (stats.isDirectory()) {

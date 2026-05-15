@@ -1,5 +1,6 @@
 import { db } from '@/lib/db';
 import { domainRepository } from '@/lib/repositories';
+import { appConfig } from '@/lib/config/app.config';
 
 // ========== ALL DOMAINS ARE FREE - FAHADCLOUD ==========
 // Every domain registers instantly without payment
@@ -45,7 +46,7 @@ export class DomainService {
     // Create hosting directory for the domain
     try {
       const fs = require('fs');
-      const hostDir = '/home/fahad/hosting/users/' + userId + '/' + domainLower;
+      const hostDir = appConfig.hosting.usersDir + '/' + userId + '/' + domainLower;
       fs.mkdirSync(hostDir, { recursive: true });
       
       const indexHtml = `<!DOCTYPE html>
@@ -84,8 +85,8 @@ export class DomainService {
     try {
       const { getDnsEngine } = await import('@/lib/dns-engine');
       getDnsEngine().writeZoneFile(domainLower, [
-        { type: 'A', name: '@', value: '52.201.210.162', ttl: 3600 },
-        { type: 'A', name: 'www', value: '52.201.210.162', ttl: 3600 },
+        { type: 'A', name: '@', value: appConfig.serverIp, ttl: 3600 },
+        { type: 'A', name: 'www', value: appConfig.serverIp, ttl: 3600 },
       ]);
     } catch (e: any) {
       console.error('DNS zone creation error:', e.message);
@@ -99,7 +100,7 @@ export class DomainService {
           domainId: domain.id,
           planSlug: data.hostingPlanSlug || 'enterprise',
           status: 'active',
-          rootPath: '/home/fahad/hosting/users/' + userId + '/' + domainLower,
+          rootPath: appConfig.hosting.usersDir + '/' + userId + '/' + domainLower,
           serverType: 'static',
           sslEnabled: false,
           storageUsed: 0,

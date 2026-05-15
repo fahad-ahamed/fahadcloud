@@ -2,10 +2,10 @@
 // Multi-tenant architecture, audit logging, SLA monitoring,
 // billing intelligence, and advanced observability
 
-import { PrismaClient } from '@prisma/client';
+import { db } from '@/lib/db';
 import { AgentId, generateId } from '../types';
 
-const prisma = new PrismaClient();
+
 
 // ============ ENTERPRISE ENGINE ============
 
@@ -23,7 +23,7 @@ export class EnterpriseEngine {
     riskLevel?: 'low' | 'medium' | 'high';
   }): Promise<void> {
     try {
-      await prisma.adminLog.create({
+      await db.adminLog.create({
         data: {
           adminId: params.userId,
           action: params.action,
@@ -78,12 +78,12 @@ export class EnterpriseEngine {
     fraudAlerts: number;
   }> {
     try {
-      const completedPayments = await prisma.payment.findMany({
+      const completedPayments = await db.payment.findMany({
         where: { status: 'verified' },
         select: { amount: true, createdAt: true },
       });
 
-      const pendingPayments = await prisma.payment.count({
+      const pendingPayments = await db.payment.count({
         where: { status: { in: ['pending', 'verifying'] } },
       });
 
@@ -102,12 +102,12 @@ export class EnterpriseEngine {
       }
 
       // Fraud alerts
-      const fraudAlerts = await prisma.payment.count({
+      const fraudAlerts = await db.payment.count({
         where: { fraudScore: { gt: 0.5 } },
       });
 
       // Top services
-      const orders = await prisma.order.findMany({ select: { type: true, amount: true } });
+      const orders = await db.order.findMany({ select: { type: true, amount: true } });
       const serviceMap = new Map<string, { revenue: number; count: number }>();
       for (const o of orders) {
         const existing = serviceMap.get(o.type) || { revenue: 0, count: 0 };
@@ -133,15 +133,15 @@ export class EnterpriseEngine {
   }> {
     try {
       const [totalUsers, activeUsers, totalDomains, activeHosting] = await Promise.all([
-        prisma.user.count(),
-        prisma.user.count({ where: { lastLoginAt: { gte: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000) } } }),
-        prisma.domain.count(),
-        prisma.hostingEnvironment.count({ where: { status: 'active' } }),
+        db.user.count(),
+        db.user.count({ where: { lastLoginAt: { gte: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000) } } }),
+        db.domain.count(),
+        db.hostingEnvironment.count({ where: { status: 'active' } }),
       ]);
 
       let totalStorage = 0;
       try {
-        const users = await prisma.user.findMany({ select: { storageUsed: true } });
+        const users = await db.user.findMany({ select: { storageUsed: true } });
         totalStorage = users.reduce((sum, u) => sum + u.storageUsed, 0);
       } catch {}
 

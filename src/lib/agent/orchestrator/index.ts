@@ -4,7 +4,7 @@
 // Coordinates all sub-agents, manages workflows, and handles autonomous decision-making
 // ALL 14 original agents have rule-based handlers that work without AI
 
-import { PrismaClient } from '@prisma/client';
+import { db } from '@/lib/db';
 import {
   AgentId, AgentMessage, AgentTaskRequest, AgentTaskResult,
   OrchestrationPlan, OrchestrationStep, AgentCollaborationContext,
@@ -12,8 +12,9 @@ import {
   AGENT_DEFINITIONS, getAgentForIntent, getAgentsForComplexTask, generateId,
 } from '../types';
 import { aiChat, aiClassifyIntent, aiPlanOrchestration, type AIChatMessage, type IntentClassification } from '../ai-engine';
+import { appConfig } from '@/lib/config/app.config';
 
-const prisma = new PrismaClient();
+
 
 // Helper: Execute a shell command safely
 async function safeExec(command: string, timeout: number = 10000): Promise<{ output: string; exitCode: number }> {
@@ -35,11 +36,11 @@ async function getUserContext(userId: string): Promise<{
   recentDeploys: any[];
 }> {
   const [domains, hostingEnvs, orders, databases, recentDeploys] = await Promise.all([
-    prisma.domain.findMany({ where: { userId }, include: { dnsRecords: true, hostingEnv: true } }),
-    prisma.hostingEnvironment.findMany({ where: { userId }, include: { domain: { select: { name: true } } } }),
-    prisma.order.findMany({ where: { userId }, orderBy: { createdAt: 'desc' }, take: 5 }),
-    prisma.userDatabase.findMany({ where: { userId } }),
-    prisma.deploymentLog.findMany({ where: { userId }, orderBy: { createdAt: 'desc' }, take: 5 }),
+    db.domain.findMany({ where: { userId }, include: { dnsRecords: true, hostingEnv: true } }),
+    db.hostingEnvironment.findMany({ where: { userId }, include: { domain: { select: { name: true } } } }),
+    db.order.findMany({ where: { userId }, orderBy: { createdAt: 'desc' }, take: 5 }),
+    db.userDatabase.findMany({ where: { userId } }),
+    db.deploymentLog.findMany({ where: { userId }, orderBy: { createdAt: 'desc' }, take: 5 }),
   ]);
   return { domains, hostingEnvs, orders, databases, recentDeploys };
 }
@@ -375,7 +376,7 @@ export class MasterOrchestrator {
   private async executeDevopsAction(step: OrchestrationStep, userId: string, userCtx: any): Promise<any> {
     try {
       const action = (step.action || '').toLowerCase();
-      const prismaClient = new PrismaClient();
+      
 
       // PM2 process management
       const pm2Result = await safeExec('pm2 jlist 2>/dev/null || echo "[]"');
@@ -398,14 +399,14 @@ export class MasterOrchestrator {
 
       // If action is about CI/CD or deployment pipeline
       if (action.includes('pipeline') || action.includes('ci') || action.includes('build')) {
-        const recentDeploys = await prismaClient.deploymentLog.findMany({
+        const recentDeploys = await db.deploymentLog.findMany({
           where: { userId },
           orderBy: { createdAt: 'desc' },
           take: 10,
           select: { id: true, framework: true, status: true, createdAt: true, buildDuration: true },
         }).catch(() => []);
 
-        const envs = await prismaClient.hostingEnvironment.findMany({
+        const envs = await db.hostingEnvironment.findMany({
           where: { userId },
           select: { id: true, name: true, status: true, type: true },
         }).catch(() => []);
@@ -519,7 +520,7 @@ export class MasterOrchestrator {
       checks.push({ check: 'file_permissions', status: 'pass', details: permResult.output.substring(0, 300) });
 
       // Log security scan
-      const prismaClient = new PrismaClient();
+      
 
       return {
         agentId: 'security',
@@ -542,10 +543,10 @@ export class MasterOrchestrator {
   private async executeDeploymentAction(step: OrchestrationStep, userId: string, userCtx: any): Promise<any> {
     try {
       const action = (step.action || '').toLowerCase();
-      const prismaClient = new PrismaClient();
+      
 
       // Get detailed deployment logs
-      const deployments = await prismaClient.deploymentLog.findMany({
+      const deployments = await db.deploymentLog.findMany({
         where: { userId },
         orderBy: { createdAt: 'desc' },
         take: 15,
@@ -692,10 +693,10 @@ export class MasterOrchestrator {
   private async executeDebuggingAction(step: OrchestrationStep, userId: string, userCtx: any): Promise<any> {
     try {
       const action = (step.action || '').toLowerCase();
-      const prismaClient = new PrismaClient();
+      
 
       // Collect recent application logs
-      const appLogs = await safeExec('tail -100 /home/fahad/fahadcloud/.next/trace 2>/dev/null; tail -100 /home/fahad/fahadcloud/logs/*.log 2>/dev/null; pm2 logs --nostream --lines 50 2>/dev/null || echo "no app logs"');
+      const appLogs = await safeExec(`tail -100 ${appConfig.projectRoot}/.next/trace 2>/dev/null; tail -100 ${appConfig.projectRoot}/logs/*.log 2>/dev/null; pm2 logs --nostream --lines 50 2>/dev/null || echo "no app logs"`);
 
       // Collect PM2 error logs
       const pm2Errors = await safeExec('pm2 logs --nostream --err --lines 30 2>/dev/null || echo "no pm2 errors"');
@@ -707,7 +708,7 @@ export class MasterOrchestrator {
       const nodeErrors = await safeExec('pm2 jlist 2>/dev/null | python3 -c "import sys,json; procs=json.load(sys.stdin); [print(p[\\\"name\\\"],p[\\\"pm2_env\\\"][\\\"status\\\"],p[\\\"pm2_env\\\"].get(\\\"pm2_env\\\",{}).get(\\\"unstable_restarts\\\",0)) for p in procs if p[\\\"pm2_env\\\"][\\\"status\\\"]!=\\\"online\\\"]" 2>/dev/null || echo "no node errors"');
 
       // Parse failed deployments for errors
-      const failedDeploys = await prismaClient.deploymentLog.findMany({
+      const failedDeploys = await db.deploymentLog.findMany({
         where: { userId, status: { in: ['failed', 'error'] } },
         orderBy: { createdAt: 'desc' },
         take: 5,
@@ -854,7 +855,7 @@ export class MasterOrchestrator {
   private async executeDatabaseAction(step: OrchestrationStep, userId: string, userCtx: any): Promise<any> {
     try {
       const action = (step.action || '').toLowerCase();
-      const prismaClient = new PrismaClient();
+      
 
       // List user's databases from the platform
       const userDatabases = userCtx.databases || [];
@@ -931,7 +932,7 @@ export class MasterOrchestrator {
 
   private async executeOptimizationAction(step: OrchestrationStep, userId: string, userCtx: any): Promise<any> {
     try {
-      const prismaClient = new PrismaClient();
+      
 
       // System performance analysis
       let sysInfo: any = {};
@@ -1060,11 +1061,11 @@ export class MasterOrchestrator {
   private async executeRecoveryAction(step: OrchestrationStep, userId: string, userCtx: any): Promise<any> {
     try {
       const action = (step.action || '').toLowerCase();
-      const prismaClient = new PrismaClient();
+      
 
       // List available backups
       const backupDir = await safeExec('ls -lah /backups/ 2>/dev/null || echo "no backup dir"');
-      const homeBackups = await safeExec('ls -lah /home/fahad/backups/ 2>/dev/null || echo "no home backups"');
+      const homeBackups = await safeExec(`ls -lah ${appConfig.hosting.baseDir}/../backups/ 2>/dev/null || echo "no home backups"`);
       const dbBackups = await safeExec('ls -lah /var/backups/ 2>/dev/null | head -20 || echo "no var backups"');
 
       // Parse backup files
@@ -1089,7 +1090,7 @@ export class MasterOrchestrator {
 
       const backups = [
         ...parseBackupList(backupDir.output, '/backups/'),
-        ...parseBackupList(homeBackups.output, '/home/fahad/backups/'),
+        ...parseBackupList(homeBackups.output, `${appConfig.hosting.baseDir}/../backups/`),
         ...parseBackupList(dbBackups.output, '/var/backups/'),
       ];
 
@@ -1115,7 +1116,7 @@ export class MasterOrchestrator {
       // If action is to create a backup
       if (action.includes('create') || action.includes('backup')) {
         const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-        const backupResult = await safeExec(`mkdir -p /backups && tar czf /backups/fahadcloud_${timestamp}.tar.gz -C /home/fahad/fahadcloud --exclude=node_modules --exclude=.next --exclude=.git . 2>&1 || echo "backup_failed"`, 60000);
+        const backupResult = await safeExec(`mkdir -p /backups && tar czf /backups/fahadcloud_${timestamp}.tar.gz -C ${appConfig.projectRoot} --exclude=node_modules --exclude=.next --exclude=.git . 2>&1 || echo "backup_failed"`, 60000);
         return {
           agentId: 'recovery',
           action: step.action,
@@ -1154,7 +1155,7 @@ export class MasterOrchestrator {
 
   private async executeScalingAction(step: OrchestrationStep, userId: string, userCtx: any): Promise<any> {
     try {
-      const prismaClient = new PrismaClient();
+      
 
       // Current resource usage
       let sysInfo: any = {};
@@ -1269,10 +1270,10 @@ export class MasterOrchestrator {
   private async executeDnsAction(step: OrchestrationStep, userId: string, userCtx: any): Promise<any> {
     try {
       const action = (step.action || '').toLowerCase();
-      const prismaClient = new PrismaClient();
+      
 
       // Get full domain info from database
-      const domains = await prismaClient.domain.findMany({
+      const domains = await db.domain.findMany({
         where: { userId },
         include: {
           dnsRecords: { orderBy: { type: 'asc' } },
@@ -1344,10 +1345,10 @@ export class MasterOrchestrator {
   private async executePaymentAction(step: OrchestrationStep, userId: string, userCtx: any): Promise<any> {
     try {
       const action = (step.action || '').toLowerCase();
-      const prismaClient = new PrismaClient();
+      
 
       // Get user's orders
-      const orders = await prismaClient.order.findMany({
+      const orders = await db.order.findMany({
         where: { userId },
         orderBy: { createdAt: 'desc' },
         take: 20,
@@ -1441,7 +1442,7 @@ export class MasterOrchestrator {
 
   private async executeSupervisorAction(step: OrchestrationStep, userId: string, userCtx: any): Promise<any> {
     try {
-      const prismaClient = new PrismaClient();
+      
 
       // Collect health of all agents
       const agentStatuses: any[] = [];
@@ -1462,7 +1463,7 @@ export class MasterOrchestrator {
       // Database connectivity check
       let dbConnected = false;
       try {
-        await prismaClient.$queryRaw`SELECT 1`;
+        await db.$queryRaw`SELECT 1`;
         dbConnected = true;
       } catch { dbConnected = false; }
 
@@ -1538,11 +1539,11 @@ export class MasterOrchestrator {
 
   private async executeAutoLearningAction(step: OrchestrationStep, userId: string, userCtx: any): Promise<any> {
     try {
-      const prismaClient = new PrismaClient();
+      
 
       // Gather learning-related statistics from the database
-      const activityCount = await prismaClient.activityLog.count({ where: { userId } }).catch(() => 0);
-      const recentActivities = await prismaClient.activityLog.findMany({
+      const activityCount = await db.activityLog.count({ where: { userId } }).catch(() => 0);
+      const recentActivities = await db.activityLog.findMany({
         where: { userId },
         orderBy: { createdAt: 'desc' },
         take: 10,
@@ -1557,7 +1558,7 @@ export class MasterOrchestrator {
       }
 
       // Get all activity types for learning analysis
-      const allActivityTypes = await prismaClient.activityLog.groupBy({
+      const allActivityTypes = await db.activityLog.groupBy({
         by: ['action'],
         where: { userId },
         _count: { action: true },
@@ -1640,15 +1641,15 @@ export class MasterOrchestrator {
 
   private async executeV3AgentFallback(agentId: string, step: OrchestrationStep, userId: string, userCtx: any): Promise<any> {
     try {
-      const prismaClient = new PrismaClient();
+      
       const agentDef = AGENT_DEFINITIONS[agentId as AgentId];
       let ruleBasedResult: any = {};
 
       switch (agentId) {
         case 'coding': {
           // Coding agent: provide codebase structure info
-          const projectStructure = await safeExec('find /home/fahad/fahadcloud/src -type f -name "*.ts" -o -name "*.tsx" 2>/dev/null | head -50 || echo "no project"');
-          const packageInfo = await safeExec('cat /home/fahad/fahadcloud/package.json 2>/dev/null | head -30 || echo "no package.json"');
+          const projectStructure = await safeExec(`find ${appConfig.projectRoot}/src -type f -name "*.ts" -o -name "*.tsx" 2>/dev/null | head -50 || echo "no project"`);
+          const packageInfo = await safeExec(`cat ${appConfig.projectRoot}/package.json 2>/dev/null | head -30 || echo "no package.json"`);
           ruleBasedResult = {
             projectFiles: projectStructure.output.trim().split('\n').filter(Boolean).length,
             packageInfo: packageInfo.output.substring(0, 500).trim(),
@@ -1659,7 +1660,7 @@ export class MasterOrchestrator {
         }
         case 'ui_design': {
           // UI Design agent: provide UI component inventory
-          const components = await safeExec('find /home/fahad/fahadcloud/src -type f -name "*.tsx" -path "*/components/*" 2>/dev/null | head -30 || echo "no components"');
+          const components = await safeExec(`find ${appConfig.projectRoot}/src -type f -name "*.tsx" -path "*/components/*" 2>/dev/null | head -30 || echo "no components"`);
           ruleBasedResult = {
             componentCount: components.output.trim().split('\n').filter(Boolean).length,
             components: components.output.substring(0, 500).trim(),
@@ -1670,7 +1671,7 @@ export class MasterOrchestrator {
         }
         case 'research': {
           // Research agent: provide system documentation status
-          const docsCount = await safeExec('find /home/fahad/fahadcloud -type f -name "*.md" -o -name "README*" 2>/dev/null | head -20 || echo "no docs"');
+          const docsCount = await safeExec(`find ${appConfig.projectRoot} -type f -name "*.md" -o -name "README*" 2>/dev/null | head -20 || echo "no docs"`);
           ruleBasedResult = {
             documentationFiles: docsCount.output.trim().split('\n').filter(Boolean).length,
             capabilities: ['Technology research', 'Best practices lookup', 'Documentation review'],
@@ -1738,8 +1739,8 @@ export class MasterOrchestrator {
         }
         case 'devops_advanced': {
           // Advanced DevOps: CI/CD pipeline analysis
-          const cicdStatus = await safeExec('ls -la /home/fahad/fahadcloud/.github/workflows/ 2>/dev/null || echo "no CI/CD"');
-          const dockerCompose = await safeExec('cat /home/fahad/fahadcloud/docker-compose*.yml 2>/dev/null | head -30 || echo "no docker-compose"');
+          const cicdStatus = await safeExec(`ls -la ${appConfig.projectRoot}/.github/workflows/ 2>/dev/null || echo "no CI/CD"`);
+          const dockerCompose = await safeExec(`cat ${appConfig.projectRoot}/docker-compose*.yml 2>/dev/null | head -30 || echo "no docker-compose"`);
           ruleBasedResult = {
             cicdPipelines: !cicdStatus.output.includes('no CI/CD'),
             dockerComposeConfigured: !dockerCompose.output.includes('no docker-compose'),

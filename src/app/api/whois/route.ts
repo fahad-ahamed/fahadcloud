@@ -56,7 +56,7 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const tld = parts.slice(-1)[0];
+    const tld = parts.slice(-1)[0]!;
 
     // Try RDAP lookup
     const rdapServer = await findRdapServer(tld);

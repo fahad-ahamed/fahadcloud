@@ -64,7 +64,7 @@ const conversationContexts = new Map<string, ConversationContext>();
 function getConversationId(messages: AIChatMessage[]): string {
   const systemMsgs = messages.filter(m => m.role !== 'system');
   if (systemMsgs.length > 0) {
-    return systemMsgs[0].content.substring(0, 50).replace(/\s/g, '_');
+    return systemMsgs[0]!.content.substring(0, 50).replace(/\s/g, '_');
   }
   return 'default';
 }
@@ -100,10 +100,10 @@ function updateContext(id: string, messages: AIChatMessage[]): ConversationConte
 
   // Extract entities
   const domainMatch = lastUserMsg.match(/([a-z0-9-]+\.(com|net|org|io|dev|app|xyz|tk|ml|ga|cf|info|biz|me|co|cc|pw|in|bd))/i);
-  if (domainMatch) ctx.mentionedEntities.domain = domainMatch[1];
+  if (domainMatch) ctx.mentionedEntities.domain = domainMatch[1]!;
 
   const ipMatch = lastUserMsg.match(/\b(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})\b/);
-  if (ipMatch) ctx.mentionedEntities.ip = ipMatch[1];
+  if (ipMatch) ctx.mentionedEntities.ip = ipMatch[1]!;
 
   conversationContexts.set(id, ctx);
   return ctx;
@@ -178,19 +178,19 @@ export function classifyIntentWithNLP(message: string): IntentClassification {
 
   // Extract entities
   const domainMatch = lower.match(/([a-z0-9-]+\.(com|net|org|io|dev|app|xyz|tk|ml|ga|cf|info|biz|me|co|bd))/);
-  if (domainMatch) entities.domain = domainMatch[1];
+  if (domainMatch) entities.domain = domainMatch[1]!;
 
   const ipMatch = lower.match(/\b(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})\b/);
-  if (ipMatch) entities.ip = ipMatch[1];
+  if (ipMatch) entities.ip = ipMatch[1]!;
 
   const tldMatch = lower.match(/\.(\w{2,6})\b/);
-  if (tldMatch) entities.tld = '.' + tldMatch[1];
+  if (tldMatch) entities.tld = '.' + tldMatch[1]!;
 
   const frameworkMatch = lower.match(/\b(react|next\.?js|vue|nuxt|node\.?js|express|python|php|laravel|wordpress|gatsby|svelte|angular|static|html)\b/);
-  if (frameworkMatch) entities.framework = frameworkMatch[1].replace('.js', 'js');
+  if (frameworkMatch) entities.framework = frameworkMatch[1]!.replace('.js', 'js');
 
   const dbMatch = lower.match(/\b(postgres|mysql|redis|qdrant|mongodb|sqlite)\b/);
-  if (dbMatch) entities.database = dbMatch[1];
+  if (dbMatch) entities.database = dbMatch[1]!;
 
   // Match intent patterns
   let bestIntent: IntentClassification = { intent: 'general', confidence: 0.3, entities, subIntents: [] };
@@ -474,7 +474,7 @@ function generateGreeting(message: string, ctx: ConversationContext): string {
     "ওয়ালাইকুম আসসালাম! 😊 FahadCloud AI-তে আপনাকে স্বাগতম। আমি ২২টি AI এজেন্ট নিয়ে কাজ করি — ডোমেইন থেকে ডিপ্লয়মেন্ট, সিকিউরিটি থেকে মনিটরিং, সব কিছু হ্যান্ডেল করতে পারি। বলুন, কী দরকার?",
     "স্বাগতম! 🌟 আমি FahadCloud-এর AI Assistant। আপনার ক্লাউড সার্ভার, ডোমেইন, হোস্টিং বা যেকোনো টেকনিক্যাল বিষয়ে সাহায্য করতে পারি। কী নিয়ে কথা বলতে চান?",
   ];
-  return greetings[responseCounter++ % greetings.length];
+  return greetings[responseCounter++ % greetings.length]!;
 }
 
 function generateThanksResponse(message: string, ctx: ConversationContext): string {
@@ -484,7 +484,7 @@ function generateThanksResponse(message: string, ctx: ConversationContext): stri
     "ধন্যবাদ আপনাকেও! ✨ আপনার ক্লাউড জার্নিতে আমি সবসময় সাথে আছি। যেকোনো প্রশ্ন থাকলে বলুন!",
     "You're welcome! 😄 আপনার FahadCloud এক্সপেরিয়েন্স আরও ভালো করতে আমি সবসময় চেষ্টা করবো। আর কিছু দরকার হলে বলুন!",
   ];
-  return responses[responseCounter++ % responses.length];
+  return responses[responseCounter++ % responses.length]!;
 }
 
 function generateHelpResponse(message: string, ctx: ConversationContext): string {
@@ -531,7 +531,7 @@ function generateHelpResponse(message: string, ctx: ConversationContext): string
 }
 
 function generateDomainResponse(intent: string, entities: Record<string, string>, message: string, ctx: ConversationContext): string {
-  const kb = CLOUD_KNOWLEDGE.domain;
+  const kb = CLOUD_KNOWLEDGE.domain!;
   const variation = responseCounter++ % 3;
 
   if (intent === 'domain_search') {
@@ -607,7 +607,7 @@ ${kb.bengali}`;
 }
 
 function generateHostingResponse(intent: string, entities: Record<string, string>, message: string, ctx: ConversationContext): string {
-  const kb = CLOUD_KNOWLEDGE.hosting;
+  const kb = CLOUD_KNOWLEDGE.hosting!;
 
   if (intent === 'hosting_deploy') {
     const framework = entities.framework || 'your-app';
@@ -682,7 +682,7 @@ ${kb.bengali}`;
 }
 
 function generateSSLResponse(intent: string, entities: Record<string, string>, message: string, ctx: ConversationContext): string {
-  const kb = CLOUD_KNOWLEDGE.ssl;
+  const kb = CLOUD_KNOWLEDGE.ssl!;
   const domain = entities.domain || 'your-domain';
 
   if (intent === 'ssl_install') {
@@ -716,7 +716,7 @@ ${kb.bengali}`;
 }
 
 function generateDNSResponse(intent: string, entities: Record<string, string>, message: string, ctx: ConversationContext): string {
-  const kb = CLOUD_KNOWLEDGE.dns;
+  const kb = CLOUD_KNOWLEDGE.dns!;
   const domain = entities.domain || 'your-domain';
 
   return `🌐 **DNS ম্যানেজমেন্ট** — ${domain}
@@ -743,7 +743,7 @@ ${kb.bengali}`;
 }
 
 function generateDatabaseResponse(intent: string, entities: Record<string, string>, message: string, ctx: ConversationContext): string {
-  const kb = CLOUD_KNOWLEDGE.database;
+  const kb = CLOUD_KNOWLEDGE.database!;
   return `🗄️ **ডাটাবেস ম্যানেজমেন্ট**
 
 ${kb.overview}
@@ -761,7 +761,7 @@ ${kb.bengali}`;
 }
 
 function generateSecurityResponse(intent: string, entities: Record<string, string>, message: string, ctx: ConversationContext): string {
-  const kb = CLOUD_KNOWLEDGE.security;
+  const kb = CLOUD_KNOWLEDGE.security!;
   return `🛡️ **নিরাপত্তা ম্যানেজমেন্ট**
 
 ${kb.overview}
@@ -781,7 +781,7 @@ ${kb.bengali}`;
 }
 
 function generateMonitoringResponse(intent: string, entities: Record<string, string>, message: string, ctx: ConversationContext): string {
-  const kb = CLOUD_KNOWLEDGE.monitoring;
+  const kb = CLOUD_KNOWLEDGE.monitoring!;
   return `📊 **মনিটরিং ও সিস্টেম স্ট্যাটাস**
 
 ${kb.overview}
@@ -799,7 +799,7 @@ ${kb.bengali}`;
 }
 
 function generatePaymentResponse(intent: string, entities: Record<string, string>, message: string, ctx: ConversationContext): string {
-  const kb = CLOUD_KNOWLEDGE.payment;
+  const kb = CLOUD_KNOWLEDGE.payment!;
   return `💳 **পেমেন্ট ও বিলিং**
 
 ${kb.overview}
@@ -822,7 +822,7 @@ ${kb.bengali}`;
 }
 
 function generateAgentResponse(intent: string, entities: Record<string, string>, message: string, ctx: ConversationContext): string {
-  const kb = CLOUD_KNOWLEDGE.ai_agents;
+  const kb = CLOUD_KNOWLEDGE.ai_agents!;
   return `🤖 **AI এজেন্ট সিস্টেম**
 
 ${kb.overview}
@@ -839,7 +839,7 @@ ${kb.details.slice(0, 12).map(d => `• ${d}`).join('\n')}
 }
 
 function generateStorageResponse(intent: string, entities: Record<string, string>, message: string, ctx: ConversationContext): string {
-  const kb = CLOUD_KNOWLEDGE.storage;
+  const kb = CLOUD_KNOWLEDGE.storage!;
   return `💾 **স্টোরেজ ম্যানেজমেন্ট**
 
 ${kb.overview}
@@ -1214,7 +1214,7 @@ ${topicCapitalized} encompasses a wide range of concepts and practices that are 
   };
 
   const generator = researchTemplates[topic.toLowerCase()] || researchTemplates.default;
-  return generator();
+  return generator!();
 }
 
 function generatePoints(topic: string, count: number, category: string): string {
@@ -1275,7 +1275,7 @@ function generatePoints(topic: string, count: number, category: string): string 
   };
 
   const categoryPoints = points[category] || points.concept;
-  return categoryPoints.slice(0, count).map(p => `- ${p}`).join('\n');
+  return categoryPoints!.slice(0, count).map(p => `- ${p}`).join('\n');
 }
 
 // ============ THINKING GENERATION ============

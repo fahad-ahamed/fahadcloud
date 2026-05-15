@@ -1,9 +1,9 @@
 // ============ AGENT MONITOR DASHBOARD API ============
 import { NextRequest, NextResponse } from 'next/server';
-import { PrismaClient } from '@prisma/client';
+import { db } from '@/lib/db';
 import { requireAuth, authErrorResponse } from '@/lib/middleware/auth.middleware';
 
-const prisma = new PrismaClient();
+
 
 export async function GET(request: NextRequest) {
   try {
@@ -11,12 +11,12 @@ export async function GET(request: NextRequest) {
     if (!auth.authenticated) return authErrorResponse(auth);
 
     // Get all registered agents
-    const agents = await prisma.agentRegistry.findMany({
+    const agents = await db.agentRegistry.findMany({
       orderBy: { lastActiveAt: 'desc' },
     });
 
     // Get recent activity logs
-    const recentLogs = await prisma.agentActivityLog.findMany({
+    const recentLogs = await db.agentActivityLog.findMany({
       orderBy: { createdAt: 'desc' },
       take: 50,
     });

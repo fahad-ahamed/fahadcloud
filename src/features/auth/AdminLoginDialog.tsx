@@ -18,7 +18,7 @@ interface AdminLoginDialogProps {
   adminOtpLoading: boolean;
   adminVerifyLoading: boolean;
   adminError: string;
-  setAdminError?: (v: string) => void;
+  setAdminError: (v: string) => void;
   onRequestOtp: () => void;
   onVerifyOtp: () => void;
   onAdminPasswordLogin?: (email: string, password: string) => Promise<void>;
@@ -40,7 +40,7 @@ export default function AdminLoginDialog({
   const [passwordLoading, setPasswordLoading] = useState(false);
 
   const handlePasswordLogin = async () => {
-    setAdminError?.('');
+    setAdminError('');
     if (!adminEmail.trim()) { setAdminError('Please enter your email'); return; }
     if (!adminPassword) { setAdminError('Please enter your password'); return; }
     

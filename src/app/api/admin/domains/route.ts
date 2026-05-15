@@ -2,6 +2,13 @@ import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { domainRepository, adminLogRepository } from '@/lib/repositories';
 import { requireAdmin, getClientIp, authErrorResponse } from '@/lib/middleware';
+import type { Domain, User, HostingEnvironment } from '@prisma/client';
+
+type DomainSearchItem = Domain & {
+  user: Pick<User, 'id' | 'firstName' | 'lastName' | 'email'>;
+  _count: { dnsRecords: number };
+  hostingEnv: Pick<HostingEnvironment, 'id' | 'status' | 'planSlug'> | null;
+};
 
 export async function GET(request: NextRequest) {
   try {
@@ -18,7 +25,7 @@ export async function GET(request: NextRequest) {
     const result = await domainRepository.searchDomains({ status, userId, search, page, limit });
 
     return NextResponse.json({
-      domains: result.items.map(d => ({
+      domains: result.items.map((d: DomainSearchItem) => ({
         id: d.id,
         name: d.name,
         tld: d.tld,

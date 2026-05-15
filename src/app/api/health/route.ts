@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { db } from '@/lib/db';
 
 export const dynamic = "force-dynamic";
 
@@ -9,12 +10,9 @@ export async function GET() {
 
   // 1. Database check
   try {
-    const { PrismaClient } = await import("@prisma/client");
-    const prisma = new PrismaClient();
     const start = Date.now();
-    await prisma.user.count();
+    await db.user.count();
     checks.database = { status: "healthy", latency: (Date.now() - start) + "ms" };
-    await prisma.$disconnect();
   } catch (e: any) {
     checks.database = { status: "unhealthy", error: e.message };
     allHealthy = false;
@@ -32,7 +30,7 @@ export async function GET() {
     checks.redis = { 
       status: "healthy", 
       latency: (Date.now() - start) + "ms",
-      usedMemory: usedMatch ? usedMatch[1].trim() : "unknown",
+      usedMemory: usedMatch ? usedMatch[1]!.trim() : "unknown",
       dbSize,
       connected: true
     };

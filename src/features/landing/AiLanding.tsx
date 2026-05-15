@@ -413,6 +413,7 @@ export default function AiLanding({ onGetStarted, onBack }: AiLandingProps) {
         adminOtpLoading={adminOtpLoading}
         adminVerifyLoading={adminVerifyLoading}
         adminError={adminError}
+        setAdminError={setAdminError}
         onRequestOtp={async () => {
           setAdminError('');
           if (!adminEmail.trim()) { setAdminError('Please enter your email'); return; }

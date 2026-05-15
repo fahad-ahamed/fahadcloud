@@ -1,9 +1,11 @@
-// System utilities - uses require() directly (externalized from webpack)
+// System utilities - uses proper ES imports
 import { validateShellCommand, getSandboxEnv, getSandboxCwd } from '@/lib/shell-sandbox';
+import os from 'os';
+import { execSync } from 'child_process';
+import { mkdirSync } from 'fs';
 
 export function getSystemInfo() {
   try {
-    const os = require('os');
     const cpus = os.cpus();
     const totalMem = os.totalmem();
     const freeMem = os.freemem();
@@ -12,7 +14,6 @@ export function getSystemInfo() {
     
     let disk = 0;
     try {
-      const { execSync } = require('child_process');
       const output = execSync("df -h / | tail -1 | awk '{print $5}' | tr -d '%'", { encoding: 'utf-8' });
       disk = parseInt(output.trim()) || 0;
     } catch {}
@@ -40,15 +41,14 @@ export function executeCommand(command: string, userId: string): { output: strin
   }
 
   const homeDir = getSandboxCwd(userId);
-  try { require('fs').mkdirSync(homeDir, { recursive: true }); } catch {}
+  try { mkdirSync(homeDir, { recursive: true }); } catch {}
   try {
-    const { execSync } = require('child_process');
     const output = execSync(validation.sanitized!, {
       timeout: 15000,
       maxBuffer: 512 * 1024,
       encoding: 'utf-8',
       cwd: homeDir,
-      env: { ...getSandboxEnv(userId) },
+      env: { ...process.env, ...getSandboxEnv(userId) },
     });
     return { output: output || 'OK', exitCode: 0 };
   } catch (error: any) {
@@ -56,4 +56,3 @@ export function executeCommand(command: string, userId: string): { output: strin
     return { output, exitCode: error.status || 1 };
   }
 }
-

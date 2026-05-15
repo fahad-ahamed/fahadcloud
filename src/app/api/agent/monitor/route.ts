@@ -64,19 +64,19 @@ export async function GET(request: NextRequest) {
     // Get memory stats
     let memoryStats: any[] = [];
     try {
-      memoryStats = await db.agentMemory.groupBy({ by: ['type'], _count: true });
+      memoryStats = await db.agentMemory.groupBy({ by: ['type'], _count: true } as any);
     } catch {}
 
     // Get bug stats
     let bugStats: any[] = [];
     try {
-      bugStats = await db.bugReport.groupBy({ by: ['severity'], _count: true, where: { status: { not: 'fixed' } } });
+      bugStats = await db.bugReport.groupBy({ by: ['severity'], _count: true, where: { status: { not: 'fixed' } } } as any);
     } catch {}
 
     // Get learning stats
     let learningStats: any[] = [];
     try {
-      learningStats = await db.learningSession.groupBy({ by: ['status'], _count: true });
+      learningStats = await db.learningSession.groupBy({ by: ['status'], _count: true } as any);
     } catch {}
 
     // Get queue status

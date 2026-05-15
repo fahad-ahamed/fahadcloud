@@ -2,6 +2,8 @@
 // Creates isolated container environments for each user/domain
 
 import { execSync } from 'child_process';
+import { existsSync, writeFileSync, mkdirSync as fsMkdirSync } from 'fs';
+import { appConfig } from '@/lib/config/app.config';
 
 export interface HostingContainer {
   id: string;
@@ -58,9 +60,9 @@ export class HostingEngine {
       return { success: false, error: 'Docker is not available on this server' };
     }
 
-    const config = FRAMEWORK_IMAGES[framework] || FRAMEWORK_IMAGES.static;
+    const config = FRAMEWORK_IMAGES[framework] || FRAMEWORK_IMAGES.static!;
     const containerName = `fc-${userId.substring(0, 8)}-${domainName.replace(/\./g, '-')}`;
-    const hostDir = `/home/fahad/hosting/users/${userId}/${domainName}`;
+    const hostDir = `${appConfig.hosting.usersDir}/${userId}/${domainName}`;
     const port = await this.allocatePort();
 
     try {
@@ -68,10 +70,9 @@ export class HostingEngine {
       execSync(`mkdir -p ${hostDir}`, { encoding: 'utf-8' });
       
       // Ensure there's an index.html
-      const fs = require('fs');
       const indexPath = `${hostDir}/index.html`;
-      if (!fs.existsSync(indexPath)) {
-        fs.writeFileSync(indexPath, `<!DOCTYPE html>
+      if (!existsSync(indexPath)) {
+        writeFileSync(indexPath, `<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
@@ -97,7 +98,7 @@ export class HostingEngine {
       }
 
       // Create nginx config for this site
-      const nginxConfDir = `/home/fahad/hosting/nginx`;
+      const nginxConfDir = `${appConfig.hosting.nginxDir}`;
       execSync(`mkdir -p ${nginxConfDir}`, { encoding: 'utf-8' });
       
       const nginxConf = `server {
@@ -110,7 +111,7 @@ export class HostingEngine {
         try_files $uri $uri/ /index.html;
     }
 }`;
-      fs.writeFileSync(`${nginxConfDir}/${domainName}.conf`, nginxConf);
+      writeFileSync(`${nginxConfDir}/${domainName}.conf`, nginxConf);
 
       // Stop and remove existing container if any
       try {
@@ -151,7 +152,7 @@ export class HostingEngine {
       return {
         success: true,
         containerId,
-        url: `http://52.201.210.162:${port}`,
+        url: `http://${process.env.SERVER_IP || 'localhost'}:${port}`,
         buildLog: `Container ${containerName} created with ${config.image} on port ${port}`,
       };
     } catch (error: any) {
@@ -172,7 +173,7 @@ export class HostingEngine {
         { encoding: 'utf-8', timeout: 10000 }
       );
       const [id, status, image, ports] = output.trim().split('|');
-      return { id: id.substring(0, 12), name: containerName, image, status, ports: ports ? [ports] : [], createdAt: '' };
+      return { id: id!.substring(0, 12), name: containerName, image: image!, status: status!, ports: ports ? [ports] : [], createdAt: '' };
     } catch {
       return null;
     }
@@ -215,7 +216,7 @@ export class HostingEngine {
       );
       return output.trim().split('\n').filter(Boolean).map(line => {
         const [id, name, status, image, ports] = line.split('|');
-        return { id, name, status, image, ports: ports ? [ports] : [], createdAt: '' };
+        return { id: id!, name: name!, status: status!, image: image!, ports: ports ? [ports] : [], createdAt: '' };
       });
     } catch { return []; }
   }

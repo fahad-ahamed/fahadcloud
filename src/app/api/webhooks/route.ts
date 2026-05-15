@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAuth, requireAdmin } from "@/lib/middleware";
+import { db } from '@/lib/db';
 
 export async function POST(request: NextRequest) {
   try {
@@ -15,10 +16,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "url and events array are required" }, { status: 400 });
     }
 
-    const { PrismaClient } = await import("@prisma/client");
-    const prisma = new PrismaClient();
-    
-    const webhook = await prisma.webhook.create({
+    const webhook = await db.webhook.create({
       data: {
         url,
         events: JSON.stringify(events),
@@ -29,7 +27,6 @@ export async function POST(request: NextRequest) {
       }
     });
 
-    await prisma.$disconnect();
     return NextResponse.json({ webhook, message: "Webhook created successfully" });
   } catch (e: any) {
     return NextResponse.json({ error: e.message }, { status: 500 });
@@ -43,15 +40,11 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: auth.error }, { status: auth.status || 401 });
     }
 
-    const { PrismaClient } = await import("@prisma/client");
-    const prisma = new PrismaClient();
-    
-    const webhooks = await prisma.webhook.findMany({
+    const webhooks = await db.webhook.findMany({
       where: { userId: auth.user!.userId },
       select: { id: true, url: true, events: true, description: true, active: true, createdAt: true }
     });
 
-    await prisma.$disconnect();
     return NextResponse.json({ webhooks });
   } catch (e: any) {
     return NextResponse.json({ error: e.message }, { status: 500 });

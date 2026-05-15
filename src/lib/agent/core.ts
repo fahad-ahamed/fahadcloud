@@ -1,11 +1,8 @@
 // AI Agent Core Engine - FahadCloud Intelligent Cloud Engineer
 // Handles memory, task planning, multi-step reasoning, tool calling, and automation
 
-import { PrismaClient } from '@prisma/client';
-
-
-
-const prisma = new PrismaClient();
+import { db } from '@/lib/db';
+import { appConfig } from '@/lib/config/app.config';
 
 // ============ TYPES ============
 
@@ -522,8 +519,8 @@ function generateResponse(intent: IntentResult, plan: PlanResult, context: Agent
     }
     case 'domain_check': {
       const domain = intent.entities.domain || 'your domain';
-      if (toolResults.length > 0 && toolResults[0].success) {
-        const result = toolResults[0].output;
+      if (toolResults.length > 0 && toolResults[0]!.success) {
+        const result = toolResults[0]!.output;
         if (result?.available) {
           message = `Great news! **${domain}** is available for registration! 🎉\n\n` +
             `**Registration Price:** ${result.price ? `৳${result.price}` : 'Check pricing'}\n` +
@@ -673,19 +670,19 @@ export async function executeTool(toolName: string, input: Record<string, any>, 
           const rdapResponse = await fetch(`https://rdap.org/domain/${domain}`, { signal: AbortSignal.timeout(5000) });
           if (rdapResponse.status === 404) {
             // Domain is likely available
-            const pricing = await prisma.tldPricing.findUnique({ where: { tld: `.${tld}` } });
+            const pricing = await db.tldPricing.findUnique({ where: { tld: `.${tld}` } });
             output = { available: true, domain, tld: `.${tld}`, price: pricing?.registerPrice || getEstimatedPrice(tld), sld };
           } else {
             output = { available: false, domain, tld: `.${tld}` };
           }
         } catch {
           // If RDAP fails, check our database
-          const existing = await prisma.domain.findUnique({ where: { name: domain } });
+          const existing = await db.domain.findUnique({ where: { name: domain } });
           if (existing) {
             output = { available: false, domain };
           } else {
             const tld = domain.split('.').pop() || 'com';
-            const pricing = await prisma.tldPricing.findUnique({ where: { tld: `.${tld}` } });
+            const pricing = await db.tldPricing.findUnique({ where: { tld: `.${tld}` } });
             output = { available: true, domain, tld: `.${tld}`, price: pricing?.registerPrice || getEstimatedPrice(tld), sld: domain.split('.')[0] };
           }
         }
@@ -693,7 +690,7 @@ export async function executeTool(toolName: string, input: Record<string, any>, 
       }
       case 'domain_pricing': {
         const tld = input.tld || 'com';
-        const pricing = await prisma.tldPricing.findUnique({ where: { tld: tld.startsWith('.') ? tld : `.${tld}` } });
+        const pricing = await db.tldPricing.findUnique({ where: { tld: tld.startsWith('.') ? tld : `.${tld}` } });
         output = pricing || { tld, registerPrice: getEstimatedPrice(tld.replace('.', '')), renewPrice: getEstimatedPrice(tld.replace('.', '')) };
         break;
       }
@@ -706,18 +703,18 @@ export async function executeTool(toolName: string, input: Record<string, any>, 
         const framework = input.framework || 'static';
         const serverType = input.serverType || getServerType(framework);
         const domainName = input.domainName || '';
-        const rootPath = input.rootPath || `/home/fahad/hosting/users/${userId}/${domainName || Date.now()}`;
+        const rootPath = input.rootPath || `${appConfig.hosting.usersDir}/${userId}/${domainName || Date.now()}`;
         
         // Create hosting directory
         try {
-          const { execSync } = require('child_process');
-          execSync(`mkdir -p ${rootPath}`, { encoding: 'utf-8' });
+          const { execSync: execDir } = await import('child_process');
+          execDir(`mkdir -p ${rootPath}`, { encoding: 'utf-8' });
           
           // Create default index.html if directory is empty
-          const fs = require('fs');
+          const { existsSync, writeFileSync } = await import('fs');
           const indexPath = `${rootPath}/index.html`;
-          if (!fs.existsSync(indexPath)) {
-            fs.writeFileSync(indexPath, `<!DOCTYPE html>
+          if (!existsSync(indexPath)) {
+            writeFileSync(indexPath, `<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
@@ -764,9 +761,9 @@ export async function executeTool(toolName: string, input: Record<string, any>, 
         
         // Create hosting environment in database
         try {
-          const domain = domainName ? await prisma.domain.findFirst({ where: { name: domainName, userId } }) : null;
+          const domain = domainName ? await db.domain.findFirst({ where: { name: domainName, userId } }) : null;
           if (domain) {
-            await prisma.hostingEnvironment.upsert({
+            await db.hostingEnvironment.upsert({
               where: { domainId: domain.id },
               update: { status: 'active', planSlug: 'starter', serverType, rootPath, dockerContainerId: containerId, lastDeployedAt: new Date() },
               create: { userId, domainId: domain.id, planSlug: 'starter', status: 'active', rootPath, serverType, sslEnabled: false, storageUsed: 0, storageLimit: 1073741824, dockerContainerId: containerId },
@@ -793,10 +790,10 @@ export async function executeTool(toolName: string, input: Record<string, any>, 
             const { getDnsEngine } = await import('@/lib/dns-engine');
             const dnsEngine = getDnsEngine();
             const result = dnsEngine.writeZoneFile(domain, [
-              { type: 'A', name: '@', value: '52.201.210.162', ttl: 3600 },
-              { type: 'A', name: 'www', value: '52.201.210.162', ttl: 3600 },
+              { type: 'A', name: '@', value: process.env.SERVER_IP || '127.0.0.1', ttl: 3600 },
+              { type: 'A', name: 'www', value: process.env.SERVER_IP || '127.0.0.1', ttl: 3600 },
             ]);
-            output = { status: 'configured', domain, zoneFile: result.path, records: ['A @ -> 52.201.210.162', 'A www -> 52.201.210.162'] };
+            output = { status: 'configured', domain, zoneFile: result.path, records: [`A @ -> ${process.env.SERVER_IP || '127.0.0.1'}`, `A www -> ${process.env.SERVER_IP || '127.0.0.1'}`] };
           } catch (e: any) {
             output = { status: 'configured', domain, note: 'DNS zone written but server reload may be needed' };
           }
@@ -849,7 +846,7 @@ export async function executeTool(toolName: string, input: Record<string, any>, 
 
     // Log tool execution
     try {
-      await prisma.agentToolExecution.create({
+      await db.agentToolExecution.create({
         data: {
           userId,
           taskId: input.taskId,
@@ -941,14 +938,14 @@ function formatUptime(seconds: number): string {
 
 export async function storeMemory(userId: string, type: string, key: string, value: any): Promise<void> {
   try {
-    const existing = await prisma.agentMemory.findFirst({ where: { userId, type, key } });
+    const existing = await db.agentMemory.findFirst({ where: { userId, type, key } });
     if (existing) {
-      await prisma.agentMemory.update({
+      await db.agentMemory.update({
         where: { id: existing.id },
         data: { value: JSON.stringify(value), accessCount: existing.accessCount + 1, lastAccessed: new Date(), relevance: Math.min(existing.relevance + 0.1, 1.0) },
       });
     } else {
-      await prisma.agentMemory.create({
+      await db.agentMemory.create({
         data: { userId, type, key, value: JSON.stringify(value), relevance: 1.0 },
       });
     }
@@ -960,7 +957,7 @@ export async function recallMemories(userId: string, types?: string[], limit: nu
     const where: any = { userId, relevance: { gte: 0.3 } };
     if (types && types.length > 0) where.type = { in: types };
     
-    const memories = await prisma.agentMemory.findMany({
+    const memories = await db.agentMemory.findMany({
       where,
       orderBy: [{ relevance: 'desc' }, { lastAccessed: 'desc' }],
       take: limit,
@@ -968,7 +965,7 @@ export async function recallMemories(userId: string, types?: string[], limit: nu
 
     // Update access counts
     for (const mem of memories) {
-      await prisma.agentMemory.update({
+      await db.agentMemory.update({
         where: { id: mem.id },
         data: { accessCount: mem.accessCount + 1, lastAccessed: new Date() },
       }).catch(() => {});
@@ -988,12 +985,12 @@ export async function recallMemories(userId: string, types?: string[], limit: nu
 
 export async function decayMemoryRelevance(): Promise<void> {
   try {
-    await prisma.agentMemory.updateMany({
+    await db.agentMemory.updateMany({
       where: { lastAccessed: { lt: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000) } },
       data: { relevance: { multiply: 0.95 } },
     });
     // Clean up very low relevance memories
-    await prisma.agentMemory.deleteMany({
+    await db.agentMemory.deleteMany({
       where: { relevance: { lt: 0.1 } },
     });
   } catch {}
@@ -1009,7 +1006,7 @@ export async function processAgentMessage(
 ): Promise<AgentResponse> {
   
   // 1. Get user context
-  const user = await prisma.user.findUnique({ where: { id: userId } });
+  const user = await db.user.findUnique({ where: { id: userId } });
   if (!user) {
     return { message: 'User not found', actions: [], tasks: [], suggestions: [], status: 'failed' };
   }
@@ -1018,7 +1015,7 @@ export async function processAgentMessage(
   const memories = await recallMemories(userId, ['preference', 'project', 'domain', 'deployment', 'configuration'], 10);
 
   // 3. Get active tasks
-  const activeTasks = await prisma.agentTask.findMany({
+  const activeTasks = await db.agentTask.findMany({
     where: { userId, status: { in: ['planned', 'approved', 'running'] } },
     orderBy: { createdAt: 'desc' },
     take: 5,
@@ -1039,7 +1036,7 @@ export async function processAgentMessage(
       description: t.description,
       status: t.status,
       currentStep: t.currentStep,
-      result: t.result,
+      result: t.result ?? undefined,
     })),
   };
 
@@ -1061,7 +1058,7 @@ export async function processAgentMessage(
   // 8. Create task record if plan has steps
   if (plan.steps.length > 0 && plan.requiresApproval) {
     try {
-      const task = await prisma.agentTask.create({
+      const task = await db.agentTask.create({
         data: {
           sessionId,
           userId,
@@ -1108,7 +1105,7 @@ export async function processAgentMessage(
 
   // 11. Store assistant message
   try {
-    await prisma.agentMessage.create({
+    await db.agentMessage.create({
       data: {
         sessionId,
         role: 'assistant',
@@ -1125,13 +1122,13 @@ export async function processAgentMessage(
 // ============ TASK EXECUTION ENGINE ============
 
 export async function executeApprovedTask(taskId: string, approvedBy: string): Promise<{ success: boolean; result?: string; error?: string }> {
-  const task = await prisma.agentTask.findUnique({ where: { id: taskId } });
+  const task = await db.agentTask.findUnique({ where: { id: taskId } });
   if (!task) return { success: false, error: 'Task not found' };
   if (task.status !== 'planned') return { success: false, error: 'Task is not in planned state' };
 
   const steps: TaskStep[] = JSON.parse(task.plan || '[]');
   
-  await prisma.agentTask.update({
+  await db.agentTask.update({
     where: { id: taskId },
     data: { status: 'running', approvedBy, approvedAt: new Date(), startedAt: new Date() },
   });
@@ -1140,16 +1137,16 @@ export async function executeApprovedTask(taskId: string, approvedBy: string): P
   let lastResult = '';
 
   for (let i = 0; i < steps.length; i++) {
-    const step = steps[i];
+    const step = steps[i]!;
     
     // Update current step
-    await prisma.agentTask.update({
+    await db.agentTask.update({
       where: { id: taskId },
       data: { currentStep: i + 1 },
     });
 
     // Create task log
-    const log = await prisma.agentTaskLog.create({
+    const log = await db.agentTaskLog.create({
       data: {
         taskId,
         step: i + 1,
@@ -1166,13 +1163,13 @@ export async function executeApprovedTask(taskId: string, approvedBy: string): P
       const duration = Date.now() - startTime;
 
       if (result.success) {
-        await prisma.agentTaskLog.update({
+        await db.agentTaskLog.update({
           where: { id: log.id },
           data: { status: 'success', output: JSON.stringify(result.output), duration },
         });
         lastResult = JSON.stringify(result.output);
       } else {
-        await prisma.agentTaskLog.update({
+        await db.agentTaskLog.update({
           where: { id: log.id },
           data: { status: 'failed', error: result.error, duration },
         });
@@ -1187,7 +1184,7 @@ export async function executeApprovedTask(taskId: string, approvedBy: string): P
       }
     } catch (error: any) {
       const duration = Date.now() - startTime;
-      await prisma.agentTaskLog.update({
+      await db.agentTaskLog.update({
         where: { id: log.id },
         data: { status: 'failed', error: error.message, duration },
       });
@@ -1196,7 +1193,7 @@ export async function executeApprovedTask(taskId: string, approvedBy: string): P
     }
   }
 
-  await prisma.agentTask.update({
+  await db.agentTask.update({
     where: { id: taskId },
     data: {
       status: allSuccess ? 'completed' : 'failed',
@@ -1216,7 +1213,7 @@ export async function executeApprovedTask(taskId: string, approvedBy: string): P
 }
 
 async function executeRollback(taskId: string, userId: string, rollbackPlan: TaskStep[]): Promise<void> {
-  await prisma.agentTask.update({
+  await db.agentTask.update({
     where: { id: taskId },
     data: { rollbackStatus: 'pending' },
   });
@@ -1227,7 +1224,7 @@ async function executeRollback(taskId: string, userId: string, rollbackPlan: Tas
     } catch {}
   }
 
-  await prisma.agentTask.update({
+  await db.agentTask.update({
     where: { id: taskId },
     data: { rollbackStatus: 'executed' },
   });
@@ -1242,9 +1239,9 @@ export async function oneClickDeploy(
   sessionId: string
 ): Promise<{ taskId: string; status: string }> {
   const serverType = getServerType(framework);
-  const rootPath = `/home/fahad/hosting/users/${userId}/${domainName}`;
+  const rootPath = `${appConfig.hosting.usersDir}/${userId}/${domainName}`;
 
-  const task = await prisma.agentTask.create({
+  const task = await db.agentTask.create({
     data: {
       sessionId,
       userId,
@@ -1279,14 +1276,14 @@ export async function oneClickDeploy(
 // ============ SESSION MANAGEMENT ============
 
 export async function createSession(userId: string, title: string = 'New Conversation'): Promise<string> {
-  const session = await prisma.agentSession.create({
+  const session = await db.agentSession.create({
     data: { userId, title, context: JSON.stringify({}) },
   });
   return session.id;
 }
 
 export async function getSessionHistory(sessionId: string): Promise<ConversationMessage[]> {
-  const messages = await prisma.agentMessage.findMany({
+  const messages = await db.agentMessage.findMany({
     where: { sessionId },
     orderBy: { createdAt: 'asc' },
     take: 100,
@@ -1306,16 +1303,16 @@ export async function getSystemHealth(): Promise<any> {
 
 export async function getAIAdminStats(): Promise<any> {
   const [totalSessions, totalTasks, totalToolExecs, totalMemories, activeTasks, pendingApprovals] = await Promise.all([
-    prisma.agentSession.count(),
-    prisma.agentTask.count(),
-    prisma.agentToolExecution.count(),
-    prisma.agentMemory.count(),
-    prisma.agentTask.count({ where: { status: 'running' } }),
-    prisma.agentTask.count({ where: { status: 'planned', requiresApproval: true } }),
+    db.agentSession.count(),
+    db.agentTask.count(),
+    db.agentToolExecution.count(),
+    db.agentMemory.count(),
+    db.agentTask.count({ where: { status: 'running' } }),
+    db.agentTask.count({ where: { status: 'planned', requiresApproval: true } }),
   ]);
 
-  const taskBreakdown = await prisma.agentTask.groupBy({ by: ['type'], _count: true });
-  const recentExecutions = await prisma.agentToolExecution.findMany({
+  const taskBreakdown = await db.agentTask.groupBy({ by: ['type'], _count: true });
+  const recentExecutions = await db.agentToolExecution.findMany({
     orderBy: { createdAt: 'desc' }, take: 20,
   });
 
@@ -1333,7 +1330,7 @@ export async function getAIAdminStats(): Promise<any> {
 
 export async function emergencyShutdown(): Promise<void> {
   // Cancel all running and planned tasks
-  await prisma.agentTask.updateMany({
+  await db.agentTask.updateMany({
     where: { status: { in: ['planned', 'approved', 'running'] } },
     data: { status: 'cancelled' },
   });

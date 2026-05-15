@@ -54,7 +54,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({
       databases: {
-        postgresql: { ...pgHealth.postgresql, tables: { users: userCount, domains: domainCount, agentSessions: agentSessionCount, agentMemories: agentMemoryCount, agentTasks: agentTaskCount, bugReports: bugReportCount, knowledge: knowledgeCount, learningSessions: learningSessionCount } },
+        postgresql: { ...pgHealth, tables: { users: userCount, domains: domainCount, agentSessions: agentSessionCount, agentMemories: agentMemoryCount, agentTasks: agentTaskCount, bugReports: bugReportCount, knowledge: knowledgeCount, learningSessions: learningSessionCount } },
         redis: { ...redisHealth, dbSize, memoryUsage: redisMemory.match(/used_memory_human:(\S+)/)?.[1] || 'unknown' },
         qdrant: qdrantHealth,
       },

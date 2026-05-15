@@ -1,14 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/middleware";
+import { db } from '@/lib/db';
 
 export const dynamic = "force-dynamic";
 
 export async function GET() {
   try {
-    const { PrismaClient } = await import("@prisma/client");
-    const prisma = new PrismaClient();
-    const jobs = await prisma.cronJob.findMany({ orderBy: { createdAt: "desc" } });
-    await prisma.$disconnect();
+    const jobs = await db.cronJob.findMany({ orderBy: { createdAt: "desc" } });
     return NextResponse.json({ cronJobs: jobs });
   } catch (e: any) {
     return NextResponse.json({ error: e.message }, { status: 500 });
@@ -24,10 +22,7 @@ export async function POST(request: NextRequest) {
     const { name, schedule, command, timeout } = body;
     if (!name || !schedule || !command) return NextResponse.json({ error: "name, schedule, and command are required" }, { status: 400 });
 
-    const { PrismaClient } = await import("@prisma/client");
-    const prisma = new PrismaClient();
-    const job = await prisma.cronJob.create({ data: { name, schedule, command, timeout: timeout || 300 } });
-    await prisma.$disconnect();
+    const job = await db.cronJob.create({ data: { name, schedule, command, timeout: timeout || 300 } });
     return NextResponse.json({ cronJob: job, message: "Cron job created" });
   } catch (e: any) {
     return NextResponse.json({ error: e.message }, { status: 500 });
@@ -43,10 +38,7 @@ export async function DELETE(request: NextRequest) {
     const id = searchParams.get("id");
     if (!id) return NextResponse.json({ error: "id required" }, { status: 400 });
 
-    const { PrismaClient } = await import("@prisma/client");
-    const prisma = new PrismaClient();
-    await prisma.cronJob.delete({ where: { id } });
-    await prisma.$disconnect();
+    await db.cronJob.delete({ where: { id } });
     return NextResponse.json({ message: "Cron job deleted" });
   } catch (e: any) {
     return NextResponse.json({ error: e.message }, { status: 500 });

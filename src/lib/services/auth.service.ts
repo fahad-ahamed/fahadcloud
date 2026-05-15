@@ -5,6 +5,7 @@ import { userRepository } from '@/lib/repositories';
 import { checkRateLimit } from '@/lib/rateLimit';
 import { generateOtp, storeOtp, verifyOtp } from '@/lib/otp';
 import { sendOtpEmail, sendRegistrationOtpEmail, sendActionVerificationEmail, sendPasswordResetEmail, loadOwnerConfig } from '@/lib/smtp';
+import { appConfig } from '@/lib/config/app.config';
 import bcrypt from 'bcryptjs';
 
 export class AuthService {
@@ -25,7 +26,7 @@ export class AuthService {
         const username = (u.firstName + '.' + u.lastName).toLowerCase();
         const simpleUsername = u.firstName.toLowerCase();
         return username === emailOrUsername.toLowerCase() || simpleUsername === emailOrUsername.toLowerCase();
-      });
+      }) ?? null;
     }
     if (!user) {
       return { error: 'Invalid email or password', status: 401 };
@@ -75,8 +76,8 @@ export class AuthService {
     if (!email || !password || !firstName || !lastName) {
       return { error: 'Email, password, first name, and last name are required', status: 400 };
     }
-    if (password.length < 6) {
-      return { error: 'Password must be at least 6 characters', status: 400 };
+    if (password.length < 8) {
+      return { error: 'Password must be at least 8 characters', status: 400 };
     }
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(email)) {
@@ -98,7 +99,7 @@ export class AuthService {
         email: email.toLowerCase(), password: hashedPassword, firstName, lastName,
         company: data.company || null, phone: data.phone || null,
         address: data.address || null, city: data.city || null, country: data.country || null,
-        role: 'customer', balance: 999999, storageLimit: 107374182400, storageUsed: 0, emailVerified: false,
+        role: 'customer', balance: appConfig.admin.defaultBalance, storageLimit: appConfig.admin.defaultStorageLimit, storageUsed: 0, emailVerified: false,
       },
     });
 
@@ -120,7 +121,7 @@ export class AuthService {
     }
     
     if (!emailResult.success) {
-      console.log('[SMTP FAILED] Registration OTP for ' + email + ': ' + otp);
+      if (process.env.NODE_ENV !== 'production') console.log('[SMTP FAILED] Registration OTP for ' + email + ': ' + otp);
     }
 
     return {
@@ -227,7 +228,7 @@ export class AuthService {
     const emailResult = await sendPasswordResetEmail(normalizedEmail, otp, user.firstName);
     
     if (!emailResult.success) {
-      console.log('[PASSWORD RESET] SMTP failed for ' + normalizedEmail + ', OTP: ' + otp);
+      if (process.env.NODE_ENV !== 'production') console.log('[PASSWORD RESET] SMTP failed for ' + normalizedEmail + ', OTP: ' + otp);
       // Still return success to prevent email enumeration, but log the OTP
       return { message: 'If an account exists with this email, a verification code has been sent.' };
     }
@@ -275,8 +276,8 @@ export class AuthService {
       return { error: 'Reset token and new password are required', status: 400 };
     }
 
-    if (newPassword.length < 6) {
-      return { error: 'Password must be at least 6 characters', status: 400 };
+    if (newPassword.length < 8) {
+      return { error: 'Password must be at least 8 characters', status: 400 };
     }
 
     // Verify the reset token
@@ -313,10 +314,10 @@ export class AuthService {
     const normalizedEmail = email.toLowerCase().trim();
     const ownerConfig = loadOwnerConfig();
     
+    const envAdminEmails = (process.env.ADMIN_EMAILS || '').split(',').map(e => e.trim().toLowerCase()).filter(Boolean);
     const adminEmails = [
       ownerConfig.ownerEmail,
-      'admin@fahadcloud.com',
-      'fahadcloud24@gmail.com',
+      ...envAdminEmails,
     ].filter(Boolean).map(e => e.toLowerCase().trim());
     
     if (!adminEmails.includes(normalizedEmail)) return { error: 'This email is not authorized for admin access.', status: 403 };
@@ -327,10 +328,10 @@ export class AuthService {
 
     const emailResult = await sendOtpEmail(normalizedEmail, otp);
     
-    console.log('[ADMIN LOGIN OTP] Email: ' + normalizedEmail + ', OTP: ' + otp);
+    if (process.env.NODE_ENV !== 'production') console.log('[ADMIN LOGIN OTP] Email: ' + normalizedEmail + ', OTP: ' + otp);
     
     if (!emailResult.success) {
-      console.log('[SMTP FAILED] Admin OTP for ' + normalizedEmail + ': ' + otp);
+      if (process.env.NODE_ENV !== 'production') console.log('[SMTP FAILED] Admin OTP for ' + normalizedEmail + ': ' + otp);
       return { 
         message: 'Verification code generated. Check server logs or try again.', 
         email: normalizedEmail.replace(/(.{2})(.*)(@.*)/, '$1***$3'),
@@ -345,7 +346,8 @@ export class AuthService {
 
     const normalizedEmail = email.toLowerCase().trim();
     const ownerConfig = loadOwnerConfig();
-    const adminEmails = [ownerConfig.ownerEmail, 'admin@fahadcloud.com', 'fahadcloud24@gmail.com'].filter(Boolean).map(e => e.toLowerCase().trim());
+    const envAdminEmails = (process.env.ADMIN_EMAILS || '').split(',').map(e => e.trim().toLowerCase()).filter(Boolean);
+    const adminEmails = [ownerConfig.ownerEmail, ...envAdminEmails].filter(Boolean).map(e => e.toLowerCase().trim());
     if (!adminEmails.includes(normalizedEmail)) return { error: 'This email is not authorized for admin access.', status: 403 };
 
     const verifyResult = verifyOtp(normalizedEmail, otp);
@@ -356,19 +358,19 @@ export class AuthService {
       const randomPassword = require('crypto').randomBytes(32).toString('hex');
       const hashedPassword = await bcrypt.hash(randomPassword, 12);
       user = await db.user.create({
-        data: { email: normalizedEmail, password: hashedPassword, firstName: 'Admin', lastName: 'FahadCloud', role: 'admin', adminRole: 'super_admin', balance: 999999, storageLimit: 107374182400, phone: '', company: 'FahadCloud', address: '', city: 'Dhaka', country: 'Bangladesh' },
+        data: { email: normalizedEmail, password: hashedPassword, firstName: 'Admin', lastName: 'FahadCloud', role: 'admin', adminRole: 'super_admin', balance: appConfig.admin.defaultBalance, storageLimit: appConfig.admin.defaultStorageLimit, phone: '', company: 'FahadCloud', address: '', city: 'Dhaka', country: 'Bangladesh' },
       });
     } else if (user.role !== 'admin') {
       user = await userRepository.update(user.id, { role: 'admin', adminRole: 'super_admin' });
     }
 
-    await userRepository.updateLastLogin(user.id, 'admin-otp');
+    await userRepository.updateLastLogin(user!.id, 'admin-otp');
 
-    const token = await createToken({ userId: user.id, email: user.email, role: 'admin' });
+    const token = await createToken({ userId: user!.id, email: user!.email, role: 'admin' });
 
     return {
       message: 'Admin login successful', token,
-      user: { id: user.id, email: user.email, firstName: user.firstName, lastName: user.lastName, role: user.role, adminRole: user.adminRole },
+      user: { id: user!.id, email: user!.email, firstName: user!.firstName, lastName: user!.lastName, role: user!.role, adminRole: user!.adminRole },
     };
   }
 

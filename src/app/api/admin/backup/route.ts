@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/middleware";
+import { db } from '@/lib/db';
+import { appConfig } from "@/lib/config/app.config";
 
 export const dynamic = "force-dynamic";
 
@@ -10,7 +12,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: auth.error }, { status: auth.status || 403 });
     }
 
-    const backupDir = "/home/fahad/fahadcloud/backups";
+    const backupDir = `${appConfig.projectRoot}/backups`;
     const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
     const filename = "backup-" + timestamp + ".dump";
 
@@ -37,15 +39,11 @@ export async function GET(request: NextRequest) {
     const fs = await import("fs/promises");
     const stats = await fs.stat(filepath);
     
-    const { PrismaClient } = await import("@prisma/client");
-    const prisma = new PrismaClient();
-    await prisma.databaseBackup.create({
-      data: { filename, size: stats.size, type: "full", status: "completed", userId: auth.user!.userId }
+    await db.databaseBackup.create({
+      data: { filePath: filepath, fileSize: stats.size, type: "full", status: "completed", tablesIncluded: "[]" }
     });
-    await prisma.$disconnect();
-
     return NextResponse.json({ 
-      message: "Backup created successfully", filename, size: stats.size,
+      message: "Backup created successfully", filePath: filepath, fileSize: stats.size,
       sizeFormatted: (stats.size / 1024 / 1024).toFixed(2) + " MB"
     });
   } catch (e: any) {

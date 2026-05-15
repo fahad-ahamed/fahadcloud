@@ -1,9 +1,10 @@
 import { ActivityLog } from '@/lib/activity-logger';
 import { NextRequest, NextResponse } from 'next/server';
-import { PrismaClient } from '@prisma/client';
+import { db } from '@/lib/db';
 import { getHostingEngine } from '@/lib/hosting-engine';
+import { appConfig } from '@/lib/config/app.config';
 
-const prisma = new PrismaClient();
+
 
 // GET /api/agent/deploy - Get deployment options and status
 export async function GET(request: NextRequest) {
@@ -19,17 +20,17 @@ export async function GET(request: NextRequest) {
     const userId = payload.userId as string;
 
     // Get user's domains
-    const domains = await prisma.domain.findMany({ where: { userId } });
+    const domains = await db.domain.findMany({ where: { userId } });
 
     // Get deployment logs
-    const deployments = await prisma.deploymentLog.findMany({
+    const deployments = await db.deploymentLog.findMany({
       where: { userId },
       orderBy: { createdAt: 'desc' },
       take: 20,
     });
 
     // Get hosting environments
-    const hostingEnvs = await prisma.hostingEnvironment.findMany({
+    const hostingEnvs = await db.hostingEnvironment.findMany({
       where: { userId },
       include: { domain: { select: { name: true } } },
       orderBy: { createdAt: 'desc' },
@@ -83,7 +84,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Verify the domain belongs to the user
-    const domain = await prisma.domain.findFirst({
+    const domain = await db.domain.findFirst({
       where: { name: domainName, userId },
     });
     if (!domain) {
@@ -93,7 +94,7 @@ export async function POST(request: NextRequest) {
     // Create or get an agent session for deployment
     let deploySessionId = sessionId;
     if (!deploySessionId) {
-      const session = await prisma.agentSession.create({
+      const session = await db.agentSession.create({
         data: {
           userId,
           title: `Deploy: ${domainName} (${framework})`,
@@ -103,9 +104,9 @@ export async function POST(request: NextRequest) {
       });
       deploySessionId = session.id;
     } else {
-      const existingSession = await prisma.agentSession.findUnique({ where: { id: deploySessionId } });
+      const existingSession = await db.agentSession.findUnique({ where: { id: deploySessionId } });
       if (!existingSession) {
-        const session = await prisma.agentSession.create({
+        const session = await db.agentSession.create({
           data: {
             userId,
             title: `Deploy: ${domainName} (${framework})`,
@@ -123,16 +124,16 @@ export async function POST(request: NextRequest) {
 
     // Check if domain already has a linked hosting environment
     if (domain.hostingEnvId) {
-      hostingEnv = await prisma.hostingEnvironment.findUnique({ where: { id: domain.hostingEnvId } });
+      hostingEnv = await db.hostingEnvironment.findUnique({ where: { id: domain.hostingEnvId } });
     }
 
     // If not found via domain link, check by domainId (handles orphaned/unlinked cases)
     if (!hostingEnv) {
-      hostingEnv = await prisma.hostingEnvironment.findUnique({ where: { domainId: domain.id } });
+      hostingEnv = await db.hostingEnvironment.findUnique({ where: { domainId: domain.id } });
     }
 
     // Create deployment log
-    const deployLog = await prisma.deploymentLog.create({
+    const deployLog = await db.deploymentLog.create({
       data: {
         userId,
         hostingEnvId: hostingEnv?.id || domain.hostingEnvId,
@@ -142,7 +143,7 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    const rootPath = `/home/fahad/hosting/users/${userId}/${domainName}`;
+    const rootPath = `${appConfig.hosting.usersDir}/${userId}/${domainName}`;
 
     if (hostingEnv) {
       // Hosting env already exists - UPDATE it instead of creating a new one
@@ -168,7 +169,7 @@ export async function POST(request: NextRequest) {
       }
 
       // Update the existing hosting environment
-      hostingEnv = await prisma.hostingEnvironment.update({
+      hostingEnv = await db.hostingEnvironment.update({
         where: { id: hostingEnv.id },
         data: {
           serverType: framework,
@@ -182,13 +183,13 @@ export async function POST(request: NextRequest) {
 
       // Ensure the domain is linked to this hosting env
       if (domain.hostingEnvId !== hostingEnv.id) {
-        await prisma.domain.update({
+        await db.domain.update({
           where: { id: domain.id },
           data: { hostingEnvId: hostingEnv.id },
         });
       }
 
-      await prisma.deploymentLog.update({
+      await db.deploymentLog.update({
         where: { id: deployLog.id },
         data: {
           hostingEnvId: hostingEnv.id,
@@ -249,7 +250,7 @@ export async function POST(request: NextRequest) {
       } catch {}
 
       // Create HostingEnvironment in database
-      hostingEnv = await prisma.hostingEnvironment.create({
+      hostingEnv = await db.hostingEnvironment.create({
         data: {
           userId,
           domainId: domain.id,
@@ -268,13 +269,13 @@ export async function POST(request: NextRequest) {
       });
 
       // Update the Domain record to link to the new HostingEnvironment
-      await prisma.domain.update({
+      await db.domain.update({
         where: { id: domain.id },
         data: { hostingEnvId: hostingEnv.id },
       });
 
       // Update the deployment log with the hosting env id
-      await prisma.deploymentLog.update({
+      await db.deploymentLog.update({
         where: { id: deployLog.id },
         data: {
           hostingEnvId: hostingEnv.id,
@@ -289,7 +290,7 @@ export async function POST(request: NextRequest) {
     const result = await oneClickDeploy(userId, domainName, framework, deploySessionId);
 
     // Mark deployment as live
-    await prisma.deploymentLog.update({
+    await db.deploymentLog.update({
       where: { id: deployLog.id },
       data: { status: 'live' },
     });

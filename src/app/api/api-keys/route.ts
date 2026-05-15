@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAuth } from "@/lib/middleware";
 import crypto from "crypto";
+import { db } from '@/lib/db';
 
 export async function POST(request: NextRequest) {
   try {
@@ -19,10 +20,7 @@ export async function POST(request: NextRequest) {
     const apiKey = "fc_" + crypto.randomBytes(24).toString("hex");
     const apiKeyHash = crypto.createHash("sha256").update(apiKey).digest("hex");
 
-    const { PrismaClient } = await import("@prisma/client");
-    const prisma = new PrismaClient();
-    
-    const key = await prisma.apiKey.create({
+    const key = await db.apiKey.create({
       data: {
         name,
         keyHash: apiKeyHash,
@@ -33,8 +31,6 @@ export async function POST(request: NextRequest) {
         lastUsedAt: null
       }
     });
-
-    await prisma.$disconnect();
     
     return NextResponse.json({ 
       apiKey,
@@ -60,16 +56,12 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: auth.error }, { status: auth.status || 401 });
     }
 
-    const { PrismaClient } = await import("@prisma/client");
-    const prisma = new PrismaClient();
-    
-    const keys = await prisma.apiKey.findMany({
+    const keys = await db.apiKey.findMany({
       where: { userId: auth.user!.userId },
       select: { id: true, name: true, keyPrefix: true, permissions: true, expiresAt: true, lastUsedAt: true, createdAt: true, active: true },
       orderBy: { createdAt: "desc" }
     });
 
-    await prisma.$disconnect();
     return NextResponse.json({ apiKeys: keys });
   } catch (e: any) {
     return NextResponse.json({ error: e.message }, { status: 500 });
@@ -87,10 +79,7 @@ export async function DELETE(request: NextRequest) {
     const keyId = searchParams.get("id");
     if (!keyId) return NextResponse.json({ error: "Key ID is required" }, { status: 400 });
 
-    const { PrismaClient } = await import("@prisma/client");
-    const prisma = new PrismaClient();
-    await prisma.apiKey.deleteMany({ where: { id: keyId, userId: auth.user!.userId } });
-    await prisma.$disconnect();
+    await db.apiKey.deleteMany({ where: { id: keyId, userId: auth.user!.userId } });
     
     return NextResponse.json({ message: "API key deleted" });
   } catch (e: any) {

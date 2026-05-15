@@ -1,5 +1,6 @@
 import { db } from '@/lib/db';
 import { BaseRepository } from './base.repository';
+import { appConfig } from '@/lib/config/app.config';
 
 export class DomainRepository extends BaseRepository<any> {
   protected model = db.domain;
@@ -24,7 +25,7 @@ export class DomainRepository extends BaseRepository<any> {
   }
 
   async createWithDns(data: { name: string; tld: string; sld: string; isFree: boolean; status: string; userId: string; orderId?: string; years?: number }) {
-    const SERVER_IP = '52.201.210.162';
+    const SERVER_IP = appConfig.serverIp;
     const expiresAt = new Date(Date.now() + (data.years || 1) * 365 * 24 * 60 * 60 * 1000);
     return db.domain.create({
       data: {
