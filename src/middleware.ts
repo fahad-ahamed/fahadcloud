@@ -14,6 +14,7 @@ const RATE_LIMITS: Record<string, { max: number; window: number }> = {
   "default": { max: 100, window: 60 * 1000 },
 };
 
+// Fallback in-memory store for when Redis is unavailable
 const rateStore = new Map<string, { count: number; resetTime: number }>();
 
 function checkRateLimit(ip: string, path: string): { allowed: boolean; remaining: number; resetIn: number } {
@@ -45,6 +46,7 @@ if (typeof setInterval !== "undefined") {
   }, 5 * 60 * 1000);
 }
 
+// CORS configuration — enforce strict origins in production
 const ALLOWED_ORIGINS = (process.env.ALLOWED_ORIGINS || '').split(',').filter(Boolean);
 const MAX_GENERAL_PAYLOAD = 10 * 1024 * 1024; // 10MB
 const MAX_UPLOAD_PAYLOAD = 50 * 1024 * 1024; // 50MB
@@ -75,18 +77,30 @@ export function middleware(request: NextRequest) {
       return response;
     }
 
-    // CORS headers for API routes
+    // CORS headers for API routes — strict origin checking
     const origin = request.headers.get("origin");
     if (origin) {
-      // In production, only allow configured origins
-      const allowOrigin = ALLOWED_ORIGINS.length > 0
-        ? (ALLOWED_ORIGINS.includes(origin) ? origin : ALLOWED_ORIGINS[0])
-        : origin; // Dev: reflect origin
-      response.headers.set("Access-Control-Allow-Origin", allowOrigin);
-      response.headers.set("Access-Control-Allow-Methods", "GET, POST, PUT, PATCH, DELETE, OPTIONS");
-      response.headers.set("Access-Control-Allow-Headers", "Content-Type, Authorization, X-Requested-With");
-      response.headers.set("Access-Control-Allow-Credentials", "true");
-      response.headers.set("Access-Control-Max-Age", "86400");
+      let allowOrigin: string | null = null;
+      
+      if (ALLOWED_ORIGINS.length > 0) {
+        // In production: only allow configured origins
+        if (ALLOWED_ORIGINS.includes(origin)) {
+          allowOrigin = origin;
+        }
+        // If origin not in allowed list, don't set CORS headers (blocks the request)
+      } else if (process.env.NODE_ENV !== 'production') {
+        // In development without configured origins: allow all
+        allowOrigin = origin;
+      }
+      // In production without ALLOWED_ORIGINS: no CORS (same-origin only)
+
+      if (allowOrigin) {
+        response.headers.set("Access-Control-Allow-Origin", allowOrigin);
+        response.headers.set("Access-Control-Allow-Methods", "GET, POST, PUT, PATCH, DELETE, OPTIONS");
+        response.headers.set("Access-Control-Allow-Headers", "Content-Type, Authorization, X-Requested-With");
+        response.headers.set("Access-Control-Allow-Credentials", "true");
+        response.headers.set("Access-Control-Max-Age", "86400");
+      }
     }
 
     // Handle CORS preflight
@@ -135,4 +149,3 @@ export const config = {
     "/((?!_next/static|_next/image|favicon.ico|robots.txt|sitemap.xml).*)",
   ],
 };
-

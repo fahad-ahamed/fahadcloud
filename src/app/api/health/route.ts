@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { db } from '@/lib/db';
+import { checkRedisHealth } from '@/lib/redis';
 
 export const dynamic = "force-dynamic";
 
@@ -14,29 +15,22 @@ export async function GET() {
     await db.user.count();
     checks.database = { status: "healthy", latency: (Date.now() - start) + "ms" };
   } catch (e: any) {
-    checks.database = { status: "unhealthy", error: e.message };
+    checks.database = { status: "unhealthy", error: "Database connection failed" };
     allHealthy = false;
   }
 
-  // 2. Redis check
+  // 2. Redis check — reuse existing connection instead of creating new one
   try {
-    const Redis = (await import("ioredis")).default;
-    const redis = new Redis(process.env.REDIS_URL || "redis://localhost:6379");
-    const start = Date.now();
-    await redis.ping();
-    const info = await redis.info("memory");
-    const usedMatch = info.match(/used_memory_human:(.*)/);
-    const dbSize = await redis.dbsize();
-    checks.redis = { 
-      status: "healthy", 
-      latency: (Date.now() - start) + "ms",
-      usedMemory: usedMatch ? usedMatch[1]!.trim() : "unknown",
-      dbSize,
-      connected: true
+    const redisHealth = await checkRedisHealth();
+    checks.redis = {
+      status: redisHealth.status,
+      latency: redisHealth.info?.latency || "unknown",
+      usedMemory: redisHealth.info?.usedMemory || "unknown",
+      connected: redisHealth.info?.connected || false,
     };
-    redis.disconnect();
+    if (redisHealth.status !== 'healthy') allHealthy = false;
   } catch (e: any) {
-    checks.redis = { status: "unhealthy", error: e.message };
+    checks.redis = { status: "unhealthy", error: "Redis connection failed" };
     allHealthy = false;
   }
 
@@ -44,7 +38,7 @@ export async function GET() {
   try {
     const start = Date.now();
     const qdrantUrl = process.env.QDRANT_URL || "http://localhost:6333";
-    const res = await fetch(qdrantUrl + "/collections");
+    const res = await fetch(qdrantUrl + "/collections", { signal: AbortSignal.timeout(5000) });
     const data = await res.json();
     checks.qdrant = {
       status: "healthy",
@@ -52,14 +46,14 @@ export async function GET() {
       collections: data.result ? Object.keys(data.result.collections || {}).length : 0
     };
   } catch (e: any) {
-    checks.qdrant = { status: "unhealthy", error: e.message };
+    checks.qdrant = { status: "unhealthy", error: "Qdrant connection failed" };
     allHealthy = false;
   }
 
   // 4. App server
   checks.server = {
     status: "healthy",
-    version: "5.0.0-ultra",
+    version: "6.0.0",
     uptime: process.uptime(),
     memory: process.memoryUsage(),
     nodeVersion: process.version,
@@ -70,7 +64,7 @@ export async function GET() {
 
   return NextResponse.json({
     status: allHealthy ? "healthy" : "degraded",
-    version: "5.0.0-ultra",
+    version: "6.0.0",
     timestamp: new Date().toISOString(),
     responseTime: totalLatency + "ms",
     checks,
@@ -79,7 +73,7 @@ export async function GET() {
     status: allHealthy ? 200 : 503,
     headers: {
       "Cache-Control": "no-store, no-cache, must-revalidate",
-      "X-Health-Check": "fahadcloud-ultra"
+      "X-Health-Check": "fahadcloud"
     }
   });
 }

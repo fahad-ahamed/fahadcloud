@@ -1,9 +1,17 @@
 // ============ SEED ALL AGENTS INTO DATABASE ============
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
+import { requireAdmin } from '@/lib/middleware';
+import { authErrorResponse } from '@/lib/middleware';
 
 export async function POST(request: NextRequest) {
   try {
+    // Require admin authentication to seed agents
+    const auth = await requireAdmin(request);
+    if (!auth.authenticated) {
+      return authErrorResponse(auth);
+    }
+
     const agents = [
       { agentId: 'devops', name: 'DevOps Agent', type: 'devops', description: 'CI/CD pipelines, build automation, deployment orchestration', capabilities: ['ci_cd', 'docker', 'kubernetes', 'automation'] },
       { agentId: 'security', name: 'Security Agent', type: 'security', description: 'Threat detection, vulnerability scanning, firewall management', capabilities: ['threat_detection', 'vulnerability_scan', 'waf', 'ddos_protection'] },
@@ -67,6 +75,6 @@ export async function POST(request: NextRequest) {
       agents: agents.map(a => a.agentId),
     });
   } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

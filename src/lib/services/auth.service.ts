@@ -19,14 +19,31 @@ export class AuthService {
       return { error: 'Email and password are required', status: 400 };
     }
 
+    // Try email first, then username lookup with indexed query instead of loading all users
     let user = await userRepository.findByEmail(emailOrUsername);
     if (!user) {
-      const allUsers = await db.user.findMany({ where: { role: { in: ['admin', 'customer'] } } });
-      user = allUsers.find(u => {
-        const username = (u.firstName + '.' + u.lastName).toLowerCase();
-        const simpleUsername = u.firstName.toLowerCase();
-        return username === emailOrUsername.toLowerCase() || simpleUsername === emailOrUsername.toLowerCase();
-      }) ?? null;
+      // Try username matching with targeted queries instead of loading all users
+      const usernameLower = emailOrUsername.toLowerCase();
+      // Try "firstname.lastname" pattern
+      const parts = usernameLower.split('.');
+      if (parts.length >= 2) {
+        user = await db.user.findFirst({
+          where: {
+            firstName: { equals: parts[0], mode: 'insensitive' },
+            lastName: { equals: parts.slice(1).join('.'), mode: 'insensitive' },
+            role: { in: ['admin', 'customer'] },
+          },
+        });
+      }
+      // Try just firstname
+      if (!user) {
+        user = await db.user.findFirst({
+          where: {
+            firstName: { equals: usernameLower, mode: 'insensitive' },
+            role: { in: ['admin', 'customer'] },
+          },
+        });
+      }
     }
     if (!user) {
       return { error: 'Invalid email or password', status: 401 };

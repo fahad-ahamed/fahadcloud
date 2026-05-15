@@ -127,7 +127,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({ error: 'Unknown action' }, { status: 400 });
   } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
 
@@ -210,11 +210,11 @@ export async function POST(request: NextRequest) {
 
     if (action === 'db_migrate') {
       try {
-        const result = execSync(`cd ${appConfig.projectRoot} && npx prisma db push --accept-data-loss 2>&1`, { timeout: 60000, encoding: 'utf-8' });
+        const result = execSync(`cd ${appConfig.projectRoot} && npx prisma migrate deploy 2>&1`, { timeout: 60000, encoding: 'utf-8' });
         await adminLogRepository.logAction({ adminId: auth.user!.userId, action: 'system_db_migrate', targetType: 'system', targetId: 'prisma', ipAddress: ip });
         return NextResponse.json({ message: 'Database migration completed', output: result.substring(0, 2000) });
       } catch (e: any) {
-        return NextResponse.json({ error: `Migration failed: ${e.message}` }, { status: 500 });
+        return NextResponse.json({ error: 'Migration failed' }, { status: 500 });
       }
     }
 

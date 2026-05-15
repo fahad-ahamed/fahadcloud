@@ -61,6 +61,21 @@ interface ConversationContext {
 
 const conversationContexts = new Map<string, ConversationContext>();
 
+// Cleanup old conversation contexts every 30 minutes to prevent memory leak
+if (typeof setInterval !== 'undefined') {
+  setInterval(() => {
+    const now = Date.now();
+    const MAX_AGE = 30 * 60 * 1000; // 30 minutes
+    for (const [key, ctx] of conversationContexts.entries()) {
+      // Remove contexts that haven't been updated recently
+      if (ctx.questionHistory.length === 0 || 
+          (ctx.turnCount > 0 && now - (ctx as any).lastUpdated > MAX_AGE)) {
+        conversationContexts.delete(key);
+      }
+    }
+  }, 30 * 60 * 1000);
+}
+
 function getConversationId(messages: AIChatMessage[]): string {
   const systemMsgs = messages.filter(m => m.role !== 'system');
   if (systemMsgs.length > 0) {

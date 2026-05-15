@@ -1,6 +1,7 @@
 'use client'
 
 import React, { useState, useEffect, useCallback } from 'react'
+import dynamic from 'next/dynamic'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
@@ -19,22 +20,24 @@ import LandingPage from '@/features/landing/LandingPage'
 import AiLanding from '@/features/landing/AiLanding'
 import DashboardView from '@/features/dashboard/DashboardView'
 import DomainsView from '@/features/domains/DomainsView'
-import AgentChatView from '@/features/agent/AgentChatView'
-import AgentCloudIntel from '@/features/agent/AgentCloudIntel'
-import DeployView from '@/features/deploy/DeployView'
-import MonitoringView from '@/features/monitoring/MonitoringView'
-import HostingView from '@/features/hosting/HostingView'
-import DnsManager from '@/features/domains/DnsManager'
-import SslView from '@/features/ssl/SslView'
-import StorageView from '@/features/storage/StorageView'
-import PaymentsView from '@/features/payments/PaymentsView'
-import TerminalView from '@/features/terminal/TerminalView'
-import ProfileView from '@/features/profile/ProfileView'
-import AdminView from '@/features/admin/AdminView'
-import SuperAdminView from '@/features/admin/SuperAdminView'
-import DatabaseDashboard from '@/features/database/DatabaseDashboard'
-import AILearningPanel from '@/features/learning/AILearningPanel'
-import AgentMonitorDashboard from '@/features/agent-monitor/AgentMonitorDashboard'
+
+// Lazy load heavy feature components for better initial load performance
+const AgentChatView = dynamic(() => import('@/features/agent/AgentChatView'), { ssr: false })
+const AgentCloudIntel = dynamic(() => import('@/features/agent/AgentCloudIntel'), { ssr: false })
+const DeployView = dynamic(() => import('@/features/deploy/DeployView'), { ssr: false })
+const MonitoringView = dynamic(() => import('@/features/monitoring/MonitoringView'), { ssr: false })
+const HostingView = dynamic(() => import('@/features/hosting/HostingView'), { ssr: false })
+const DnsManager = dynamic(() => import('@/features/domains/DnsManager'), { ssr: false })
+const SslView = dynamic(() => import('@/features/ssl/SslView'), { ssr: false })
+const StorageView = dynamic(() => import('@/features/storage/StorageView'), { ssr: false })
+const PaymentsView = dynamic(() => import('@/features/payments/PaymentsView'), { ssr: false })
+const TerminalView = dynamic(() => import('@/features/terminal/TerminalView'), { ssr: false })
+const ProfileView = dynamic(() => import('@/features/profile/ProfileView'), { ssr: false })
+const AdminView = dynamic(() => import('@/features/admin/AdminView'), { ssr: false })
+const SuperAdminView = dynamic(() => import('@/features/admin/SuperAdminView'), { ssr: false })
+const DatabaseDashboard = dynamic(() => import('@/features/database/DatabaseDashboard'), { ssr: false })
+const AILearningPanel = dynamic(() => import('@/features/learning/AILearningPanel'), { ssr: false })
+const AgentMonitorDashboard = dynamic(() => import('@/features/agent-monitor/AgentMonitorDashboard'), { ssr: false })
 
 const agentIconMap: Record<string, any> = { Rocket, Shield, Monitor, AlertTriangle, Server, Database, Zap, RotateCcw, TrendingUp, Globe, CreditCard, Brain }
 

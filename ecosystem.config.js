@@ -8,9 +8,11 @@ module.exports = {
       PORT: 3000,
       HOSTNAME: "0.0.0.0"
     },
-    // Cluster mode: use all available CPU cores
-    instances: "max",
-    exec_mode: "cluster",
+    // Use fork mode instead of cluster mode for Next.js standalone
+    // Next.js handles its own connection pooling and in-memory state
+    // Cluster mode breaks in-memory state sharing (rate limits, sessions, etc.)
+    instances: 1,
+    exec_mode: "fork",
     autorestart: true,
     max_memory_restart: "768M",
     watch: false,

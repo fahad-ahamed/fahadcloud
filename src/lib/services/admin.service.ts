@@ -182,32 +182,72 @@ export class AdminService {
   }
 
   private async getDailyAggregation(model: string, dateField: string, start: Date, end: Date, whereExtra?: any, sumField?: string) {
-    const days: { date: string; count: number; total?: number }[] = [];
     const modelAny = (db as any)[model];
+    
+    // Optimized: Use a single query with GROUP BY instead of one query per day
+    // This reduces 30+ queries to just 1-2 queries per model
+    try {
+      const groupByResult = await modelAny.groupBy({
+        by: [dateField],
+        where: {
+          [dateField]: { gte: start, lte: end },
+          ...whereExtra,
+        },
+        _count: true,
+        ...(sumField ? { _sum: { [sumField]: true } } : {}),
+      });
 
-    for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
-      const dayStart = new Date(d);
-      dayStart.setHours(0, 0, 0, 0);
-      const dayEnd = new Date(d);
-      dayEnd.setHours(23, 59, 59, 999);
-
-      const where: any = {
-        [dateField]: { gte: dayStart, lte: dayEnd },
-        ...whereExtra,
-      };
-
-      const count = await modelAny.count({ where });
-
-      let total = 0;
-      if (sumField) {
-        const agg = await modelAny.aggregate({ where, _sum: { [sumField]: true } });
-        total = (agg._sum as any)[sumField] || 0;
+      // Build a map from the results
+      const resultMap = new Map<string, { count: number; total?: number }>();
+      for (const row of groupByResult) {
+        // Group by date portion only
+        const dateValue = row[dateField];
+        let dateKey: string;
+        if (dateValue instanceof Date) {
+          dateKey = dateValue.toISOString().split('T')[0];
+        } else {
+          dateKey = String(dateValue).split('T')[0];
+        }
+        const existing = resultMap.get(dateKey) || { count: 0, total: 0 };
+        existing.count += row._count || 0;
+        if (sumField && row._sum) {
+          existing.total = (existing.total || 0) + ((row._sum as any)[sumField] || 0);
+        }
+        resultMap.set(dateKey, existing);
       }
 
-      days.push({ date: dayStart.toISOString().split('T')[0], count, ...(sumField ? { total } : {}) });
-    }
+      // Fill in all days in the range (including days with zero activity)
+      const days: { date: string; count: number; total?: number }[] = [];
+      for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+        const dateKey = d.toISOString().split('T')[0];
+        const entry = resultMap.get(dateKey!) || { count: 0, total: 0 };
+        days.push({ 
+          date: dateKey!, 
+          count: entry.count, 
+          ...(sumField ? { total: entry.total || 0 } : {}) 
+        });
+      }
 
-    return days;
+      return days;
+    } catch {
+      // Fallback: if groupBy doesn't work with date field, use simple range query
+      const days: { date: string; count: number; total?: number }[] = [];
+      for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+        const dayStart = new Date(d);
+        dayStart.setHours(0, 0, 0, 0);
+        const dayEnd = new Date(d);
+        dayEnd.setHours(23, 59, 59, 999);
+        const where: any = { [dateField]: { gte: dayStart, lte: dayEnd }, ...whereExtra };
+        const count = await modelAny.count({ where });
+        let total = 0;
+        if (sumField) {
+          const agg = await modelAny.aggregate({ where, _sum: { [sumField]: true } });
+          total = (agg._sum as any)[sumField] || 0;
+        }
+        days.push({ date: dayStart.toISOString().split('T')[0], count, ...(sumField ? { total } : {}) });
+      }
+      return days;
+    }
   }
 }
 

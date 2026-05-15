@@ -9,12 +9,9 @@ export async function POST(request: NextRequest) {
 
     const { jwtVerify } = await import('jose');
     if (!process.env.JWT_SECRET) {
-      if (process.env.NODE_ENV === 'production') {
-        return NextResponse.json({ error: 'Server configuration error' }, { status: 500 });
-      }
-      console.warn('[SHELL] WARNING: Using fallback JWT secret. Set JWT_SECRET env var.');
+      return NextResponse.json({ error: 'Server configuration error' }, { status: 500 });
     }
-    const secret = new TextEncoder().encode(process.env.JWT_SECRET || 'fallback-dev-secret-change-in-prod');
+    const secret = new TextEncoder().encode(process.env.JWT_SECRET);
     let payload: any;
     try { payload = (await jwtVerify(token, secret)).payload; } catch { return NextResponse.json({ error: 'Invalid token' }, { status: 401 }); }
 
@@ -113,6 +110,16 @@ Access Level: ${isAdmin ? 'ADMIN (Full)' : 'USER (Restricted)'}`,
     try {
       const { execSync } = require('child_process');
       
+      // Build sanitized environment — NEVER expose process.env to child processes
+      const safeEnv: Record<string, string> = {
+        ...env,
+        HOME: cwd,
+        PATH: '/usr/local/bin:/usr/bin:/bin',
+        LANG: 'en_US.UTF-8',
+        TERM: 'xterm-256color',
+        USER: isAdmin ? 'admin' : 'user',
+      };
+
       // For admin users, use full shell with sudo capability
       if (isAdmin) {
         output = execSync(validation.sanitized!, {
@@ -120,18 +127,17 @@ Access Level: ${isAdmin ? 'ADMIN (Full)' : 'USER (Restricted)'}`,
           maxBuffer: 1024 * 1024,
           encoding: 'utf-8',
           cwd,
-          env: { ...process.env, ...env },
+          env: safeEnv,
         }) || '';
       } else {
         // For regular users, restrict to their directory
-        // Prepend cd to user's directory for safety
         const safeCommand = `cd ${cwd} 2>/dev/null; ${validation.sanitized!}`;
         output = execSync(safeCommand, {
           timeout: 15000,
           maxBuffer: 512 * 1024,
           encoding: 'utf-8',
           cwd,
-          env: { ...env, HOME: cwd },
+          env: safeEnv,
         }) || '';
       }
     } catch (error: any) {
@@ -149,6 +155,6 @@ Access Level: ${isAdmin ? 'ADMIN (Full)' : 'USER (Restricted)'}`,
       isAdmin,
     });
   } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

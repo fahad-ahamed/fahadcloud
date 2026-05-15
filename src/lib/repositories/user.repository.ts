@@ -130,43 +130,46 @@ export class UserRepository extends BaseRepository<any> {
   }
 
   async deleteWithCascade(userId: string) {
-    // Delete all related records first
-    await db.notification.deleteMany({ where: { userId } });
-    await db.cartItem.deleteMany({ where: { userId } });
-    await db.agentMemory.deleteMany({ where: { userId } });
-    await db.agentToolExecution.deleteMany({ where: { userId } });
-    // Delete agent sessions and their messages
-    const sessions = await db.agentSession.findMany({ where: { userId }, select: { id: true } });
-    for (const s of sessions) {
-      await db.agentMessage.deleteMany({ where: { sessionId: s.id } });
-      await db.agentTaskLog.deleteMany({ where: { task: { sessionId: s.id } } });
-      await db.agentTask.deleteMany({ where: { sessionId: s.id } });
-    }
-    await db.agentSession.deleteMany({ where: { userId } });
-    // Delete files, databases, hosting envs
-    await db.fileEntry.deleteMany({ where: { userId } });
-    await db.userDatabase.deleteMany({ where: { userId } });
-    // Delete hosting environments and their backups
-    const hostEnvs = await db.hostingEnvironment.findMany({ where: { userId }, select: { id: true } });
-    for (const h of hostEnvs) {
-      await db.backup.deleteMany({ where: { hostingEnvId: h.id } });
-    }
-    await db.hostingEnvironment.deleteMany({ where: { userId } });
-    // Delete domains and their DNS records
-    const domains = await db.domain.findMany({ where: { userId }, select: { id: true } });
-    for (const d of domains) {
-      await db.dnsRecord.deleteMany({ where: { domainId: d.id } });
-    }
-    await db.domain.deleteMany({ where: { userId } });
-    // Delete payments and their logs
-    const payments = await db.payment.findMany({ where: { userId }, select: { id: true } });
-    for (const p of payments) {
-      await db.paymentLog.deleteMany({ where: { paymentId: p.id } });
-    }
-    await db.payment.deleteMany({ where: { userId } });
-    await db.order.deleteMany({ where: { userId } });
-    // Finally delete user
-    return db.user.delete({ where: { id: userId } });
+    // Use transaction to ensure atomicity — if any step fails, all changes are rolled back
+    return db.$transaction(async (tx) => {
+      // Delete all related records in order of dependency
+      await tx.notification.deleteMany({ where: { userId } });
+      await tx.cartItem.deleteMany({ where: { userId } });
+      await tx.agentMemory.deleteMany({ where: { userId } });
+      await tx.agentToolExecution.deleteMany({ where: { userId } });
+      // Delete agent sessions and their messages
+      const sessions = await tx.agentSession.findMany({ where: { userId }, select: { id: true } });
+      for (const s of sessions) {
+        await tx.agentTaskLog.deleteMany({ where: { task: { sessionId: s.id } } });
+        await tx.agentTask.deleteMany({ where: { sessionId: s.id } });
+        await tx.agentMessage.deleteMany({ where: { sessionId: s.id } });
+      }
+      await tx.agentSession.deleteMany({ where: { userId } });
+      // Delete files, databases, hosting envs
+      await tx.fileEntry.deleteMany({ where: { userId } });
+      await tx.userDatabase.deleteMany({ where: { userId } });
+      // Delete hosting environments and their backups
+      const hostEnvs = await tx.hostingEnvironment.findMany({ where: { userId }, select: { id: true } });
+      for (const h of hostEnvs) {
+        await tx.backup.deleteMany({ where: { hostingEnvId: h.id } });
+      }
+      await tx.hostingEnvironment.deleteMany({ where: { userId } });
+      // Delete domains and their DNS records
+      const domains = await tx.domain.findMany({ where: { userId }, select: { id: true } });
+      for (const d of domains) {
+        await tx.dnsRecord.deleteMany({ where: { domainId: d.id } });
+      }
+      await tx.domain.deleteMany({ where: { userId } });
+      // Delete payments and their logs
+      const payments = await tx.payment.findMany({ where: { userId }, select: { id: true } });
+      for (const p of payments) {
+        await tx.paymentLog.deleteMany({ where: { paymentId: p.id } });
+      }
+      await tx.payment.deleteMany({ where: { userId } });
+      await tx.order.deleteMany({ where: { userId } });
+      // Finally delete user
+      return tx.user.delete({ where: { id: userId } });
+    });
   }
 }
 

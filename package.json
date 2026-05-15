@@ -1,6 +1,6 @@
 {
   "name": "fahadcloud",
-  "version": "5.0.0-ultra",
+  "version": "6.0.0",
   "private": true,
   "scripts": {
     "dev": "next dev -p 3000",

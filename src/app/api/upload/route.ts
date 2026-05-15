@@ -67,10 +67,15 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Sanitize directory path
+    // Sanitize directory path — use path.normalize and verify it stays within baseDir
     const sanitizedDir = directory.replace(/\.\./g, '').replace(/\/\//g, '/');
     const baseDir = `${appConfig.hosting.baseDir}/${currentUser.userId}`;
-    const fullDir = path.join(baseDir, sanitizedDir);
+    const fullDir = path.normalize(path.join(baseDir, sanitizedDir));
+    
+    // Verify the resolved path is within the user's base directory (prevents path traversal)
+    if (!fullDir.startsWith(path.normalize(baseDir))) {
+      return NextResponse.json({ error: 'Invalid directory path' }, { status: 400 });
+    }
 
     // Ensure directory exists
     await mkdir(fullDir, { recursive: true });
