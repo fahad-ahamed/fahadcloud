@@ -1,6 +1,6 @@
 {
   "name": "fahadcloud",
-  "version": "7.0.0",
+  "version": "7.1.0",
   "private": true,
   "scripts": {
     "dev": "next dev -p 3000",
@@ -56,6 +56,7 @@
     "@types/bcryptjs": "^2.4.0",
     "@types/jest": "^30.0.0",
     "@types/node": "^22.0.0",
+    "@types/nodemailer": "^8.0.0",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
     "@types/uuid": "^10.0.0",

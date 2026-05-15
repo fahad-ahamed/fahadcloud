@@ -1,13 +1,21 @@
 import { SignJWT, jwtVerify } from 'jose';
 import { cookies } from 'next/headers';
 
-if (!process.env.JWT_SECRET) {
-  if (process.env.NODE_ENV === 'production') {
-    throw new Error('FATAL: JWT_SECRET environment variable must be set in production');
+function getSecret() {
+  if (!process.env.JWT_SECRET) {
+    if (process.env.NODE_ENV === 'production') {
+      throw new Error('FATAL: JWT_SECRET environment variable must be set in production');
+    }
+    console.warn('[AUTH] WARNING: Using fallback JWT secret. Set JWT_SECRET env var for production.');
   }
-  console.warn('[AUTH] WARNING: Using fallback JWT secret. Set JWT_SECRET env var for production.');
+  return new TextEncoder().encode(process.env.JWT_SECRET || 'fallback-dev-secret-change-in-prod');
 }
-const secret = new TextEncoder().encode(process.env.JWT_SECRET || 'fallback-dev-secret-change-in-prod');
+
+let _secret: Uint8Array | null = null;
+function secret() {
+  if (!_secret) _secret = getSecret();
+  return _secret;
+}
 
 interface TokenPayload {
   userId: string;
@@ -21,12 +29,12 @@ export async function createToken(payload: TokenPayload, expiresIn?: string) {
   const jwt = new SignJWT(payload as any)
     .setProtectedHeader({ alg: 'HS256' })
     .setExpirationTime(expiresIn || '7d');
-  return jwt.sign(secret);
+  return jwt.sign(secret());
 }
 
 export async function verifyToken(token: string) {
   try {
-    const { payload } = await jwtVerify(token, secret);
+    const { payload } = await jwtVerify(token, secret());
     return payload as any;
   } catch { return null; }
 }
