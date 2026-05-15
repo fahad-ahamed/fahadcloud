@@ -1,0 +1,19 @@
+# ================= DATABASE (NEON POSTGRESQL) =================
+DATABASE_URL="postgresql://neondb_owner:npg_NTUcIE7k0XoG@ep-solitary-recipe-ap6tcvo8-pooler.c-7.us-east-1.aws.neon.tech/Prisma?sslmode=require&channel_binding=require"
+
+# ================= AUTH =================
+JWT_SECRET="fahadcloud-secret-key-2024-secure-prod-v2"
+
+# ================= SMTP (GMAIL) =================
+SMTP_HOST="smtp.gmail.com"
+SMTP_PORT=587
+SMTP_SECURE=false
+
+SMTP_USER="fahadcloud24@gmail.com"
+SMTP_PASS="qczokpijwbtbcaif"
+
+SMTP_FROM_NAME="FahadCloud"
+SMTP_FROM_EMAIL="fahadcloud24@gmail.com"
+
+# ================= OWNER =================
+OWNER_EMAIL="fahadcloud24@gmail.com"
